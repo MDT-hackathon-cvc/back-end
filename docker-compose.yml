@@ -1,0 +1,50 @@
+version: "3"
+services:
+  backend-admin:
+    container_name: 'admin_be'
+    hostname: 'admin_be'
+    image: 'admin_be'
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017/marketplace
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_TTL=86400
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    depends_on:
+      - mongodb
+      - cache
+    volumes:
+      - .:/src
+    networks:
+      - common
+  mongodb:
+    container_name: marketplace_mongo
+    image: mongo:6-jammy
+    ports:
+      - '27018:27017'
+    volumes:
+      - dbdata6:/data/db
+    networks:
+      - common
+  cache:
+    container_name: marketplace_redis
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes: 
+      - cache:/data
+    networks:
+      - common
+
+volumes:
+  dbdata6:
+  cache:
+
+networks:
+  common:
+    driver: bridge

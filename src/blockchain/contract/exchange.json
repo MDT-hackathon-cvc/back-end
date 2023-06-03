@@ -1,0 +1,786 @@
+{
+	"compiler": {
+		"version": "0.8.7+commit.e28d00a7"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_proxy",
+						"type": "address"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "bool",
+						"name": "value",
+						"type": "bool"
+					}
+				],
+				"name": "SetAdminEvent",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "SetSignerEvent",
+				"type": "event"
+			},
+			{
+				"inputs": [],
+				"name": "adminMintHandler",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "buyHandler",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "cancelHandler",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "collection1155",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "collection721",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "",
+						"type": "uint256[]"
+					},
+					{
+						"internalType": "address[]",
+						"name": "",
+						"type": "address[]"
+					},
+					{
+						"internalType": "bytes[]",
+						"name": "",
+						"type": "bytes[]"
+					},
+					{
+						"internalType": "bytes[]",
+						"name": "",
+						"type": "bytes[]"
+					}
+				],
+				"name": "handleBuyRequest",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "",
+						"type": "uint256[]"
+					},
+					{
+						"internalType": "address[]",
+						"name": "",
+						"type": "address[]"
+					},
+					{
+						"internalType": "bytes[]",
+						"name": "",
+						"type": "bytes[]"
+					},
+					{
+						"internalType": "bytes[]",
+						"name": "",
+						"type": "bytes[]"
+					}
+				],
+				"name": "handleCancelOrder",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "",
+						"type": "uint256[]"
+					},
+					{
+						"internalType": "address[]",
+						"name": "",
+						"type": "address[]"
+					},
+					{
+						"internalType": "bytes[]",
+						"name": "",
+						"type": "bytes[]"
+					},
+					{
+						"internalType": "bytes[]",
+						"name": "",
+						"type": "bytes[]"
+					}
+				],
+				"name": "handleMintRequest",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					},
+					{
+						"internalType": "bytes[]",
+						"name": "",
+						"type": "bytes[]"
+					},
+					{
+						"internalType": "uint256[]",
+						"name": "",
+						"type": "uint256[]"
+					},
+					{
+						"internalType": "uint256[]",
+						"name": "",
+						"type": "uint256[]"
+					},
+					{
+						"internalType": "uint256[]",
+						"name": "",
+						"type": "uint256[]"
+					}
+				],
+				"name": "handleMintRequestByAdmin",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "",
+						"type": "bytes"
+					}
+				],
+				"name": "invalidSaleOrder",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "isAdmin",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "isBlacklisted",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "isSigner",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "isWhitelisted",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "mintHandler",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "proxy",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "recipient",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					},
+					{
+						"internalType": "bool",
+						"name": "_value",
+						"type": "bool"
+					}
+				],
+				"name": "setAdminList",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_adminMintHandler",
+						"type": "address"
+					}
+				],
+				"name": "setAdminMintHandler",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					},
+					{
+						"internalType": "bool",
+						"name": "_value",
+						"type": "bool"
+					}
+				],
+				"name": "setBlackList",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_buyHandler",
+						"type": "address"
+					}
+				],
+				"name": "setBuyHandler",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_cancelHandler",
+						"type": "address"
+					}
+				],
+				"name": "setCancelHandler",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_collection1155",
+						"type": "address"
+					}
+				],
+				"name": "setCollection1155",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_collection721",
+						"type": "address"
+					}
+				],
+				"name": "setCollection721",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_mintHandler",
+						"type": "address"
+					}
+				],
+				"name": "setMintHandler",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "setRecipient",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "setSigner",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					},
+					{
+						"internalType": "bool",
+						"name": "_value",
+						"type": "bool"
+					}
+				],
+				"name": "setWhiteList",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "signer",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "",
+						"type": "bytes"
+					}
+				],
+				"name": "soldQuantity",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "",
+						"type": "bytes"
+					}
+				],
+				"name": "soldQuantityBySaleOrder",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"handleBuyRequest(uint256[],address[],bytes[],bytes[])": {
+					"details": "Handler buy request",
+					"params": {
+						"": "(0) saleOrderSignature, (1) buyRequestSignature"
+					}
+				},
+				"handleCancelOrder(uint256[],address[],bytes[],bytes[])": {
+					"details": "Handle cancel sale order request",
+					"params": {
+						"": "(0) saleOrderSignature"
+					}
+				},
+				"handleMintRequest(uint256[],address[],bytes[],bytes[])": {
+					"details": "Handler mint request",
+					"params": {
+						"": "(0) saleOrderSignature, (1) mintRequestSignature"
+					}
+				},
+				"isAdmin(address)": {
+					"details": "Return an account is admin or not"
+				},
+				"isBlacklisted(address)": {
+					"details": "Return an account is blacklisted or not"
+				},
+				"isSigner(address)": {
+					"details": "Return an account is signer or not"
+				},
+				"isWhitelisted(address)": {
+					"details": "Return an account is whitelisted or not"
+				},
+				"setAdminList(address,bool)": {
+					"details": "Approve or rekoke an account from admin list",
+					"params": {
+						"_account": "the wallet address",
+						"_value": "true/false"
+					}
+				},
+				"setAdminMintHandler(address)": {
+					"details": "Set the admin mint handler's address",
+					"params": {
+						"_adminMintHandler": "the address of admin mint handler"
+					}
+				},
+				"setBlackList(address,bool)": {
+					"details": "Add or remove an account from the blacklist",
+					"params": {
+						"_account": "the wallet address",
+						"_value": "true/false"
+					}
+				},
+				"setBuyHandler(address)": {
+					"details": "Set the buy handler's address",
+					"params": {
+						"_buyHandler": "the address of mint handler"
+					}
+				},
+				"setCancelHandler(address)": {
+					"details": "Set the cancel handler's address",
+					"params": {
+						"_cancelHandler": "the address of mint handler"
+					}
+				},
+				"setCollection1155(address)": {
+					"details": "Set the collection1155's address",
+					"params": {
+						"_collection1155": "the address of collection1155"
+					}
+				},
+				"setCollection721(address)": {
+					"details": "Set the collection721's address",
+					"params": {
+						"_collection721": "the address of collection721"
+					}
+				},
+				"setMintHandler(address)": {
+					"details": "Set the mint handler's address",
+					"params": {
+						"_mintHandler": "the address of mint handler"
+					}
+				},
+				"setRecipient(address)": {
+					"details": "Add or remove an account from the signer list",
+					"params": {
+						"_account": "the wallet address"
+					}
+				},
+				"setSigner(address)": {
+					"details": "Add or remove an account from the signer list",
+					"params": {
+						"_account": "the wallet address"
+					}
+				},
+				"setWhiteList(address,bool)": {
+					"details": "Add or remove an account from the whitelist",
+					"params": {
+						"_account": "the wallet address",
+						"_value": "true/false"
+					}
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"implementations/ImplementationV1.sol": "ImplementationV1"
+		},
+		"evmVersion": "london",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"@openzeppelin/contracts/security/ReentrancyGuard.sol": {
+			"keccak256": "0x0e9621f60b2faabe65549f7ed0f24e8853a45c1b7990d47e8160e523683f3935",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://287a2f8d5814dd0f05f22b740f18ca8321acc21c9bd03a6cb2203ea626e2f3f2",
+				"dweb:/ipfs/QmZRQv9iuwU817VuqkA2WweiaibKii69x9QxYBBEfbNEud"
+			]
+		},
+		"common/Structs.sol": {
+			"keccak256": "0x125faccd7c2725d8223e2129e04cabe8cfb9a3a328c99ddf825652c2688a9451",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://0228ef9706fc8eb231cc8295414f11d8eee602cd329f6dac749326e1af14386b",
+				"dweb:/ipfs/QmSbRgHDNZgFtwmfm99BTBCQLWWucSrhjARGuYHdN9MJZW"
+			]
+		},
+		"common/Upgradeable.sol": {
+			"keccak256": "0x70afb3818a97d6ca5d18681bcf5891dff08556eb923b74f4e16cef99b6061522",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://0e9027b8af8ee2ba5ed7cda033d2d02265fd69c7d7c1409af0e94331b065bb15",
+				"dweb:/ipfs/Qma7VgVeiBo9xg7Hi4pf1UxyCzDP9RM2X93dmg2ArnYW6n"
+			]
+		},
+		"implementations/Implementation.sol": {
+			"keccak256": "0xc14d25d9836587be2aeb555184da1534c94f6077ee435b8883ab3959d40e58ae",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://13418cd3127b6ef07472f56b6d877b0a2ec056c97cfdf0dcbdfe88c1c7824702",
+				"dweb:/ipfs/QmccEyCWZUiMqgeTcFDLBu4ZC8iQ9h7e8yPAKiouW5Fugb"
+			]
+		},
+		"implementations/ImplementationV1.sol": {
+			"keccak256": "0x6430dcfba3b73a03ef64bd29376a2a5162a9280d7e45c9fb67615275d2f69e53",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://eea642842aa1a6da0c51916abff43f5da26f52c59ba8433c243ab5f686fbea6a",
+				"dweb:/ipfs/QmVbxfyADZ7LFCnMTvYafsTSvuLxNM1UhiYGcY6CW6PnJ8"
+			]
+		},
+		"interfaces/IProxy.sol": {
+			"keccak256": "0xcf5044786d2bec386dd9189d86fb75b849f59490136a9fcf3e986b1e51734440",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://b7f084784651aa7be46b5e3a61aea6420b639c2ec2efdd5521961d94233e866c",
+				"dweb:/ipfs/QmRoaxxMAEJuWfB7DdfArURjDGp9nTmWhmyAdLHRGzpxwM"
+			]
+		},
+		"utils/AssemblyUtils.sol": {
+			"keccak256": "0x885458b792d10f1b393e35599e8e54eae501d18c3936214ef5452a36c49e977f",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://aaf0957b65737c1ffe574aa9f8424f816469dbac45993d2cf2e5a273715f0ab1",
+				"dweb:/ipfs/Qmdr3qDZDoCXJqdx37iYut81EN1BGLw3aMNiZZPmXPnHDs"
+			]
+		},
+		"utils/HashUtils.sol": {
+			"keccak256": "0x1fdf5ff1b76f36edec11dc93b42e703c7089ca4d4937c75256e70653e82b99cc",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://80825304e30fba8265a7f867628564f599a94ac054d5960d066aaa7affe0fbf3",
+				"dweb:/ipfs/QmdgqmFN2GNuSTQR3dUcKWdENJTWh6wcrhS3dAvzmUcxsA"
+			]
+		},
+		"utils/SignatureUtils.sol": {
+			"keccak256": "0xf834dd3cc9e8e66e4181381447d7536d376665d95ecf1d2809638a3f065386d1",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://a4947483e6f477d861da4159dbd75b73189119ed3cdfbe19e56f287dd31db54d",
+				"dweb:/ipfs/QmWTGS9pyr8Mtke9kx384cWaPp2DUkAFbuCBprdPmYcywj"
+			]
+		},
+		"utils/Utils.sol": {
+			"keccak256": "0x43abd529f3e550ae3968660fbf0155a10f12e15ae59162ae426ea2d3f71dedab",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://2417ed3ddbe734b042973f1c0717d9b88cd96ed5976f49e0786b99d9e80835d2",
+				"dweb:/ipfs/QmV6tWMAGNTVCLomrraBXRfxqfYnvH6fJRUNZGpmXLMKRZ"
+			]
+		}
+	},
+	"version": 1
+}
