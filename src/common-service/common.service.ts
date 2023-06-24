@@ -1,13 +1,4 @@
-import { DistributionRewardDocument } from 'src/schemas/DistributionReward';
-import {
-  DistributionReward,
-  DistributionRewardStatus,
-} from './../schemas/DistributionReward';
-/* eslint-disable valid-jsdoc */
-import {
-  RedemptionDocument,
-  SimpleRedemption,
-} from './../schemas/Redemption.schema';
+
 import { OwnerStatus } from './../schemas/NFT.schema';
 import {
   CACHE_MANAGER,
@@ -112,23 +103,15 @@ import {
   EventType,
   SimpleEvent,
 } from 'src/schemas/Event.schema';
-import { Redemption, RedemptionStatus } from 'src/schemas/Redemption.schema';
 import { Web3ETH } from 'src/blockchain/web3.eth';
 import ObjectID from 'bson-objectid';
 import axios from 'axios';
 import { SingleCandidateDto } from 'src/users/dto/kyc-user.dto';
 import { OwnerDocument } from 'src/schemas/Owner.schema';
-import { GetAllTokenDto } from 'src/nfts/dto/admin/get-all-token.dto';
 import {
   LockHistory,
   LockHistoryDocument,
 } from 'src/schemas/LockHistory.schema';
-import {
-  RewardEvent,
-  RewardEventDocument,
-  RewardEventStatus,
-  SimpleRewardEvent,
-} from 'src/schemas/RewardEvent.schema';
 import { PushNotificationDto } from 'src/notifications/dto/push-notification.dto';
 
 const countries = require('../resource/country-key-value.json');
@@ -177,21 +160,12 @@ export class CommonService implements OnModuleInit {
     @InjectModel(Event.name)
     private eventModel: Model<EventDocument>,
 
-    @InjectModel(Redemption.name)
-    private redemptionModel: Model<RedemptionDocument>,
-
-    @InjectModel(DistributionReward.name)
-    private distributionRewardModel: Model<DistributionRewardDocument>,
+    @InjectModel(LockHistory.name)
+    private lockHistoryModel: Model<LockHistoryDocument>,
 
     @InjectModel(Owner.name)
     private ownerModel: Model<OwnerDocument>,
 
-
-    @InjectModel(LockHistory.name)
-    private lockHistoryModel: Model<LockHistoryDocument>,
-
-    @InjectModel(RewardEvent.name)
-    private rewardEventModel: Model<RewardEventDocument>,
   ) {}
 
   async onModuleInit() {
@@ -1751,7 +1725,6 @@ export class CommonService implements OnModuleInit {
         userAddress,
         referralAddress,
         mintingEvent,
-        redemption,
         transaction,
         role,
         commissionFee,
@@ -1798,12 +1771,8 @@ export class CommonService implements OnModuleInit {
         }
         case NotificationType.N10:
         case NotificationType.N11: {
-          socketToRoom = redemption.creatorAddress;
           createNotification.address = socketToRoom;
-          createNotification.redemption =
-            this.convertToSimpleRedemption(redemption);
-          const requestId = Utils.highlight(redemption.requestId);
-          content = Content[type].replace('%requestId%', requestId);
+         
           break;
         }
         case NotificationType.N13: {
@@ -1891,9 +1860,7 @@ export class CommonService implements OnModuleInit {
       const {
         toAddress,
         mintingEvent,
-        redemption,
         transaction,
-        rewardEvent,
         nft,
       } = data;
       this.logger.log(`pushNotificationAdmin(): Push notification ${type}`);
@@ -1952,25 +1919,16 @@ export class CommonService implements OnModuleInit {
         case NotificationType.P9:
         case NotificationType.P10:
         case NotificationType.P13:
-          eventName = Utils.highlight(rewardEvent.name);
           content = Content[type].replace('%eventName%', eventName);
-          createNotification.rewardEvent =
-            this.convertToSimpleRewardEvent(rewardEvent);
+   
           break;
 
         case NotificationType.P11:
           content = Content.P11;
           break;
         case NotificationType.P12:
-          content = Content.P12.replace(
-            '%requestId%',
-            Utils.highlight(redemption.requestId),
-          ).replace(
-            '%creatorAddress%',
-            Utils.highlight(Utils.getShortAddress(redemption.creatorAddress)),
-          );
-          createNotification.redemption =
-            this.convertToSimpleRedemption(redemption);
+          
+    
           break;
         default:
           this.logger.error('pushNotificationAdmin(): wrong notification type');
@@ -2260,33 +2218,6 @@ export class CommonService implements OnModuleInit {
     return simpleNFT;
   }
 
-  convertToSimpleRewardEvent(event: RewardEventDocument) {
-    const simpleRewardEvent: SimpleRewardEvent = {
-      _id: event._id,
-      name: event.name,
-      launchDate: event.launchDate,
-      allocatedRewards: event.allocatedRewards,
-      snapshotDate: event.snapshotDate,
-      distributionDate: event.distributionDate,
-      requiredDate: event.requiredDate,
-      endDate: event.endDate,
-      requiredBalance: event.requiredBalance,
-      creatorAddress: event.creatorAddress,
-    };
-    return simpleRewardEvent;
-  }
-
-  convertToSimpleRedemption(redemption: RedemptionDocument) {
-    const simpleRedemption: SimpleRedemption = {
-      _id: redemption._id,
-      creatorAddress: redemption.creatorAddress,
-      items: redemption.items,
-      totalValue: redemption.totalValue,
-      requestId: redemption.requestId,
-      approvedDate: redemption.approvedDate,
-    };
-    return simpleRedemption;
-  }
 
   async generateCaculateUsdStages(data: {
     currencyField: string;
@@ -2342,16 +2273,6 @@ export class CommonService implements OnModuleInit {
     return event;
   }
 
-  async findRewardEventById(id: any) {
-    const rewardEvent = await this.rewardEventModel.findById(id);
-    if (!rewardEvent) {
-      throw ApiError(ErrorCode.NO_DATA_EXISTS, 'Reward event not found');
-    }
-    if (rewardEvent.isDeleted) {
-      throw ApiError(ErrorCode.NO_DATA_EXISTS, 'Reward event is not exists');
-    }
-    return rewardEvent;
-  }
 
   getCategoryInEvent(event: EventDocument, nftId: any) {
     for (const itemCategory of event.categories) {
@@ -2490,96 +2411,6 @@ export class CommonService implements OnModuleInit {
     return result;
   }
 
-  async findDetailRedemption(id: string, isFromAdmin = false) {
-    const pipeline = [
-      {
-        $match: {
-          _id: Utils.toObjectId(id),
-        },
-      },
-      { $unwind: '$items' },
-      {
-        $lookup: {
-          from: 'owners',
-          let: {
-            tokenId: '$items.tokenId',
-          },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $eq: ['$tokenId', '$$tokenId'],
-                },
-              },
-            },
-            {
-              $project: {
-                status: 1,
-              },
-            },
-          ],
-          as: 'owners',
-        },
-      },
-      {
-        $unwind: '$owners',
-      },
-      {
-        $addFields: {
-          'items.status': '$owners.status',
-        },
-      },
-      {
-        $group: {
-          _id: {
-            _id: '$_id',
-            requestId: '$requestId',
-            creatorAddress: '$creatorAddress',
-            quantity: '$quantity',
-            numberCategories: '$numberCategories',
-            status: '$status',
-            totalValue: '$totalValue',
-            approvedDate: '$approvedDate',
-            code: '$code',
-            hash: '$hash',
-            createdAt: '$createdAt',
-          },
-          items: {
-            $push: '$items',
-          },
-        },
-      },
-      {
-        $project: {
-          _id: '$_id._id',
-          requestId: '$_id.requestId',
-          creatorAddress: '$_id.creatorAddress',
-          quantity: '$_id.quantity',
-          numberCategories: '$_id.numberCategories',
-          status: '$_id.status',
-          totalValue: '$_id.totalValue',
-          approvedDate: '$_id.approvedDate',
-          hash: '$_id.hash',
-          createdAt: '$_id.createdAt',
-          code: isFromAdmin
-            ? {
-                $cond: {
-                  if: { $eq: ['$_id.status', RedemptionStatus.REDEEMABLE] },
-                  then: null,
-                  else: '$_id.code',
-                },
-              }
-            : '$_id.code',
-          items: '$items',
-        },
-      },
-    ];
-    const result = await this.redemptionModel.aggregate(pipeline);
-    if (result.length > 0) {
-      return result[0];
-    }
-    return null;
-  }
 
   async getDataSignature(data: {
     referrer: string;
@@ -2724,40 +2555,7 @@ export class CommonService implements OnModuleInit {
     return;
   }
 
-  async createRedemptionSuccess(
-    redemption: RedemptionDocument,
-    transaction: TransactionDocument,
-  ) {
-    return this.withLock(
-      { type: LockType.CREATE_REDEMPTION, documentId: redemption._id },
-      async () => {
-        const session = await this.connection.startSession();
-        await session.withTransaction(async () => {
-          // update owner
-          redemption.items.map(async (item) => {
-            await this.ownerModel.updateOne(
-              { tokenId: item.tokenId },
-              { status: OwnerStatus.REDEEMED },
-              { session },
-            );
-          });
-          // update status redemption SUBMITTED
-          redemption.status = RedemptionStatus.SUBMITTED;
-          // update transaction
-          transaction.status = TransactionStatus.SUCCESS;
-          transaction.syncedAt = new Date();
-          await Promise.all([
-            redemption.save({ session }),
-            transaction.save({ session }),
-          ]);
-        });
-        await session.endSession();
-        // push noti
-        await this.pushNotificationAdmin(NotificationType.P12, { redemption });
-        return 'Success';
-      },
-    );
-  }
+
 
   async updateEventBuyNft(data: {
     transaction: TransactionDocument;
@@ -3063,130 +2861,10 @@ export class CommonService implements OnModuleInit {
     await job.save();
   }
 
-  async findRedemptionById(id: any) {
-    const redemption = await this.redemptionModel.findById(id);
-    if (!redemption) {
-      throw ApiError(ErrorCode.NO_DATA_EXISTS, 'Redemption not found');
-    }
-    return redemption;
-  }
 
-  async cancelRedemptionSuccess(
-    redemption: RedemptionDocument,
-    transaction: TransactionDocument,
-  ) {
-    return this.withLock(
-      { type: LockType.CANCEL_REDEMPTION, documentId: redemption._id },
-      async () => {
-        const session = await this.connection.startSession();
-        await session.withTransaction(async () => {
-          // update owner
-          redemption.items.map(async (item) => {
-            const tokenInfo = await this.ownerModel.findOne({
-              tokenId: item.tokenId,
-            });
-            if (tokenInfo.status !== OwnerStatus.INVALID) {
-              await this.ownerModel.updateOne(
-                { tokenId: item.tokenId },
-                { status: OwnerStatus.UNLOCKED },
-                { session },
-              );
-            }
-          });
-          // update redemption
-          redemption.status = RedemptionStatus.CANCELED;
-          redemption.hash = transaction.hash;
-          await redemption.save({ session });
-          // update transaction
-          transaction.status = TransactionStatus.SUCCESS;
-          transaction.syncedAt = new Date();
-          await Promise.all([
-            redemption.save({ session }),
-            transaction.save({ session }),
-          ]);
-        });
-        await session.endSession();
-        return 'Success';
-      },
-    );
-  }
 
-  async approveRedemptionSuccess(
-    redemption: RedemptionDocument,
-    transaction: TransactionDocument,
-  ) {
-    return this.withLock(
-      { type: LockType.APPROVE_REDEMPTION, documentId: redemption._id },
-      async () => {
-        const { creatorAddress } = redemption;
-        const session = await this.connection.startSession();
-        await session.withTransaction(async () => {
-          const redemption = await this.redemptionModel.findById(
-            transaction.redemption.id,
-          );
+  
 
-          // calculate share, volume
-          await this.updateTransporter({
-            fromAddress: creatorAddress,
-            actionType: ActionType.REDEMPTION,
-            transaction,
-            session,
-          });
-          // update owner
-          for (const item of redemption.items) {
-            const tokenInfo = await this.ownerModel.findOne({
-              tokenId: item.tokenId,
-            });
-            if (tokenInfo.status !== OwnerStatus.INVALID) {
-              await this.ownerModel.updateOne(
-                { tokenId: item.tokenId },
-                { status: OwnerStatus.BURNED },
-                { session },
-              );
-              const nft = await this.nftModel.findOne({ _id: item.nftId });
-              const update = {
-                $inc: {
-                  'token.totalMinted': -1,
-                  'token.totalBurnt': 1,
-                  'token.totalAvailable': 1,
-                },
-              };
-              if (nft.status === NFTStatus.SOLD_OUT) {
-                update['$set'] = {
-                  status: NFTStatus.OFF_SALE,
-                };
-              }
-              await this.nftModel.updateOne(
-                {
-                  _id: item.nftId,
-                },
-                update,
-                {
-                  session: session,
-                },
-              );
-            }
-          }
-          // update redemption
-          redemption.code = Utils.createObjectId().toString();
-          redemption.status = RedemptionStatus.REDEEMABLE;
-          redemption.hash = transaction.hash;
-          redemption.approvedDate = new Date();
-
-          // update transaction
-          transaction.status = TransactionStatus.SUCCESS;
-          transaction.syncedAt = new Date();
-          await Promise.all([
-            redemption.save({ session }),
-            transaction.save({ session }),
-          ]);
-        });
-        await session.endSession();
-        await this.pushNotificationUser(NotificationType.N10, { redemption });
-        return 'Success';
-      },
-    );
-  }
 
   checkEndEventBuy(event: EventDocument) {
     const totalNftForSale = event.categories.reduce(
@@ -3203,55 +2881,7 @@ export class CommonService implements OnModuleInit {
     };
   }
 
-  async updateRedemption(
-    transaction: TransactionDocument,
-    requestData: UpdateTransactionDto,
-  ) {
-    const redemption = await this.redemptionModel.findById(
-      transaction.redemption._id,
-    );
-    if (!redemption) {
-      this.logger.log(`updateRedemption(): Not found redemption`);
-      throw ApiError('Not found redemption');
-    }
-    // const tokenIds = redemption.items.map((item) => item.tokenId);
-    // const isAllTokensInvalid = await this.isAllTokensInvalid(tokenIds);
-    // if (isAllTokensInvalid) {
-    //   throw ApiError(ErrorCode.INVALID_DATA, 'All of Token is invalid');
-    // }
-    // Redemption: Was success before
-    if (transaction.status === TransactionStatus.SUCCESS) {
-      if (requestData.isFromWorker) {
-        transaction.syncedAt = new Date();
-        await transaction.save();
-      }
-      this.logger.log(
-        `updateRedemption(): Transaction ${transaction._id} was success`,
-      );
-      return 'Transaction was success';
-    } else if (transaction.status === TransactionStatus.FAILED) {
-      this.logger.log(
-        `updateRedemption(): Transaction ${transaction._id} was error`,
-      );
-      throw ApiError('Transaction Error');
-    }
-
-    switch (transaction.type) {
-      case TransactionType.CREATE_REDEMPTION: {
-        return this.createRedemptionSuccess(redemption, transaction);
-      }
-      case TransactionType.APPROVE_REDEMPTION: {
-        return this.approveRedemptionSuccess(redemption, transaction);
-      }
-      case TransactionType.CANCEL_REDEMPTION: {
-        return this.cancelRedemptionSuccess(redemption, transaction);
-      }
-      default: {
-        this.logger.log(`Transaction type ${transaction.type} not handle`);
-        return `Transaction type ${transaction.type} not handle`;
-      }
-    }
-  }
+  
 
   sortArrayOfObject(values: any[], requestSort: any) {
     const { sort } = requestSort;
@@ -3375,17 +3005,7 @@ export class CommonService implements OnModuleInit {
       }
     } else {
       switch (actionType) {
-        case ActionType.REDEMPTION:
-          if (
-            user.userType === UserType.BDA &&
-            quantityOftoken === transaction?.redemption?.quantity
-          ) {
-            return {
-              status: true,
-              message: NotificationType.N6,
-            };
-          }
-          return result;
+        
         case ActionType.TRANSFER_BLACK_NFT:
         case ActionType.TRANSFER_NFT:
           if (user.userType === UserType.BDA && quantityOftoken === 1) {
@@ -4032,24 +3652,5 @@ export class CommonService implements OnModuleInit {
       },
     ]);
     return result?.length === tokenIds?.length;
-  }
-
-  async mapItemsInRedemption() {
-    const redemtions = await this.redemptionModel.aggregate([
-      {
-        $match: {
-          status: {
-            $nin: [RedemptionStatus.CANCELED, RedemptionStatus.FAILED],
-          },
-        },
-      },
-      { $unwind: '$items' },
-      {
-        $project: {
-          tokenId: '$items.tokenId',
-        },
-      },
-    ]);
-    return redemtions.map((e) => e.tokenId);
   }
 }

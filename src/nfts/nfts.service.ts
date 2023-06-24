@@ -161,14 +161,12 @@ export class NftsService {
   }
 
   async findNFTDetailUser(address: string, id: string) {
-    const itemTokenRedemption = await this.commonService.mapItemsInRedemption();
     const pipeLine = [
       {
         $match: {
           nftId: Utils.toObjectId(id),
           address: Utils.formatAddress(address),
           status: { $in: [OwnerStatus.INVALID, OwnerStatus.UNLOCKED] },
-          tokenId: { $nin: itemTokenRedemption },
         },
       },
       {
@@ -272,14 +270,12 @@ export class NftsService {
   }
 
   async findOwned(user: UserJWT, id: string, requestData: FindItemOwnerDto) {
-    const itemTokenRedemption = await this.commonService.mapItemsInRedemption();
     const match: any = {
       $and: [
         { isDeleted: false },
         {
           'owners.address': user.address,
           'owners.status': { $in: [OwnerStatus.UNLOCKED, OwnerStatus.INVALID] },
-          'owners.tokenId': { $nin: itemTokenRedemption },
         },
       ],
     };
@@ -453,13 +449,11 @@ export class NftsService {
   }
 
   async findOwnerNft(address: string) {
-    const itemTokenRedemption = await this.commonService.mapItemsInRedemption();
     const pipeline = [
       {
         $match: {
           address: address,
           status: { $in: [OwnerStatus.UNLOCKED, OwnerStatus.INVALID] },
-          tokenId: { $nin: itemTokenRedemption },
         },
       },
       {

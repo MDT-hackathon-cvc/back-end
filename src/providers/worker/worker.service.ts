@@ -409,19 +409,7 @@ export class WorkerService {
         const data = requestData.data as TransferDto;
         data.hash = requestData.hash;
         return this.commonService.transferNFT721(data);
-      case Contract.EVENT.REDEMPTION_SUBMITTED:
-      case Contract.EVENT.REDEMPTION_CANCELED:
-      case Contract.EVENT.REDEMPTION_APPROVE:
-        const dataRedemption = requestData.data as RedemptionFromWorkerDto;
-        const transactionRedemption =
-          await this.commonService.findTransactionById(
-            Utils.convertBytesToString(dataRedemption.transactionId),
-          );
-        return this.commonService.updateRedemption(transactionRedemption, {
-          isFromWorker: true,
-          hash: requestData.hash,
-          status: TransactionStatus.SUCCESS,
-        });
+      
       case Contract.EVENT.EVENT_CANCELED:
         const dataEvent = requestData.data as EventFromWorkerDto;
         const transactionEvent = await this.commonService.findTransactionById(

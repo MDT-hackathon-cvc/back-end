@@ -1,7 +1,4 @@
-import {
-  DistributionReward,
-  DistributionRewardSchema,
-} from 'src/schemas/DistributionReward';
+
 import { MongooseModule } from '@nestjs/mongoose';
 import { Config, ConfigSchema } from 'src/schemas/Config.schema';
 import { Module } from '@nestjs/common';
@@ -25,10 +22,8 @@ import {
   TransactionTransferSyncSchema,
 } from 'src/schemas/TransactionTransferSync.schema';
 import { EventSchema, Event } from 'src/schemas/Event.schema';
-import { Redemption, RedemptionSchema } from 'src/schemas/Redemption.schema';
 import { Owner, OwnerSchema } from 'src/schemas/Owner.schema';
 import { LockHistory, LockHistorySchema } from 'src/schemas/LockHistory.schema';
-import { RewardEvent, RewardEventSchema } from 'src/schemas/RewardEvent.schema';
 
 @Module({
   imports: [
@@ -46,11 +41,8 @@ import { RewardEvent, RewardEventSchema } from 'src/schemas/RewardEvent.schema';
         schema: TransactionTransferSyncSchema,
       },
       { name: Event.name, schema: EventSchema },
-      { name: Redemption.name, schema: RedemptionSchema },
       { name: Owner.name, schema: OwnerSchema },
-      { name: DistributionReward.name, schema: DistributionRewardSchema },
       { name: LockHistory.name, schema: LockHistorySchema },
-      { name: RewardEvent.name, schema: RewardEventSchema },
     ]),
     SocketModule,
   ],

@@ -8,11 +8,7 @@ import { Config, ConfigDocument } from 'src/schemas/Config.schema';
 import { NFT, TokenStandard, NFTDocument } from 'src/schemas/NFT.schema';
 import { CoinMarketGateway } from '../coin-market/coin-market.gateway';
 import { CoinMarketType } from '../coin-market/coin-market.type';
-import {
-  RewardEvent,
-  RewardEventDocument,
-  RewardEventStatus,
-} from 'src/schemas/RewardEvent.schema';
+
 import {
   NotificationDocument,
   NotificationType,
@@ -30,8 +26,7 @@ export class TasksService {
     @InjectModel(Config.name) private configModel: Model<ConfigDocument>,
     @InjectModel(NFT.name) private nftModel: Model<NFTDocument>,
     @InjectModel(Event.name) private eventModel: Model<EventDocument>,
-    @InjectModel(RewardEvent.name)
-    private rewardEventModel: Model<RewardEventDocument>,
+
     @InjectModel(Notification.name)
     private notificationModel: Model<NotificationDocument>,
   ) {}
@@ -95,24 +90,5 @@ export class TasksService {
     }
   }
 
-  @Cron(EVERY_2_MINUTES)
-  async pushNotificationRewardEventDaft() {
-    const rewardEvents = await this.rewardEventModel.find({
-      status: RewardEventStatus.DRAFT,
-      snapshotDate: {
-        $lte: new Date(),
-      },
-    });
-    for (const event of rewardEvents) {
-      const notification = await this.notificationModel.findOne({
-        type: NotificationType.P10,
-        'rewardEvent._id': event._id,
-      });
-      if (!notification) {
-        await this.commonService.pushNotificationAdmin(NotificationType.P10, {
-          rewardEvent: event,
-        });
-      }
-    }
-  }
+
 }

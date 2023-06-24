@@ -34,10 +34,7 @@ import {
   EventStatus,
   EventType,
 } from 'src/schemas/Event.schema';
-import {
-  RedemptionStatus,
-  RedemptionDocument,
-} from 'src/schemas/Redemption.schema';
+
 import { Owner } from 'src/schemas/NFT.schema';
 import { OwnerDocument, OwnerStatus } from 'src/schemas/Owner.schema';
 
@@ -374,47 +371,7 @@ export class TransactionsService {
       requestData: requestData,
     };
   }
-  async createSignatureForRedemptionTransaction(
-    transactionType: TransactionType,
-    redemption: RedemptionDocument,
-    transaction: TransactionDocument,
-  ) {
-    const web3Gateway = new Web3Gateway();
-    const dataToSign = [
-      this.getActionCodeByTransactionType(transactionType),
-      redemption.signature.hash,
-      Utils.formatMongoId(transaction._id),
-    ];
-    const signer = await this.commonService.findSigner();
-    const signature = await web3Gateway.sign(dataToSign, signer.privateKey);
-    let requestData;
-    if (transactionType === TransactionType.CREATE_REDEMPTION) {
-      requestData = [
-        transaction.tokenIds,
-        process.env.CONTRACT_ERC_721,
-        Utils.formatMongoId(redemption._id),
-        Utils.formatMongoId(transaction._id),
-        redemption.signature.hash,
-        signature,
-      ];
-    } else if (
-      transactionType === TransactionType.CANCEL_REDEMPTION ||
-      transactionType === TransactionType.APPROVE_REDEMPTION
-    ) {
-      requestData = [
-        Utils.formatMongoId(redemption._id),
-        Utils.formatMongoId(transaction._id),
-        redemption.signature.hash,
-        signature,
-      ];
-    }
-    return {
-      address: signer.address,
-      hash: signature,
-      data: dataToSign,
-      requestData: requestData,
-    };
-  }
+
 
   getActionCodeByTransactionType(type: TransactionType) {
     const {
@@ -797,8 +754,6 @@ export class TransactionsService {
         );
       case TransactionType.APPROVE_REDEMPTION:
       case TransactionType.CANCEL_REDEMPTION:
-      case TransactionType.CREATE_REDEMPTION:
-        return this.commonService.updateRedemption(transaction, requestData);
       case TransactionType.CANCELED:
         return this.commonService.cancelEvent(transaction, requestData);
       case TransactionType.DEPOSIT:

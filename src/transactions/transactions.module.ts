@@ -10,7 +10,6 @@ import { NFT, NFTSchema, Owner } from 'src/schemas/NFT.schema';
 import { NftsModule } from 'src/nfts/nfts.module';
 import { CommonModule } from 'src/common-service/common.module';
 import { OwnerSchema } from 'src/schemas/Owner.schema';
-import { Redemption, RedemptionSchema } from 'src/schemas/Redemption.schema';
 
 @Module({
   imports: [
@@ -19,7 +18,6 @@ import { Redemption, RedemptionSchema } from 'src/schemas/Redemption.schema';
       { name: Transaction.name, schema: TransactionSchema },
       { name: User.name, schema: UserSchema },
       { name: Owner.name, schema: OwnerSchema },
-      { name: Redemption.name, schema: RedemptionSchema },
     ]),
     NftsModule,
     CommonModule,

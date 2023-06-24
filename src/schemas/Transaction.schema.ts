@@ -1,13 +1,5 @@
-import {
-  DistributionReward,
-  DistributionRewardDocument,
-} from 'src/schemas/DistributionReward';
-import { RedemptionDocument } from 'src/schemas/Redemption.schema';
-import {
-  Redemption,
-  RedemptionItem,
-  RedemptionStatus,
-} from './Redemption.schema';
+
+
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import * as mongoose from 'mongoose';
 import { Document } from 'mongoose';
@@ -157,8 +149,7 @@ export class Transaction {
   @Prop({ type: AffiliateInfor, default: {}, _id: false })
   affiliateInfor?: AffiliateInfor;
 
-  @Prop({ type: Redemption })
-  redemption: RedemptionDocument;
+
 
   @Prop({ type: Object })
   adminEarning: mongoose.Types.Decimal128;
@@ -166,8 +157,7 @@ export class Transaction {
   @Prop({ type: String, default: null })
   adminMintedAddress: string;
 
-  @Prop({})
-  distributionRewards: DistributionReward[];
+
 
   @Prop({ type: Object })
   totalDistributedReward: mongoose.Types.Decimal128;

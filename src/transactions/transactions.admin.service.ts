@@ -35,11 +35,7 @@ import * as moment from 'moment';
 import { RecoverTransactionDto } from './dto/admin/recover-transaction.dto';
 import { UserJWT } from 'src/auth/role.enum';
 import { ApiError } from 'src/common/api';
-import {
-  Redemption,
-  RedemptionDocument,
-  RedemptionStatus,
-} from 'src/schemas/Redemption.schema';
+
 import { Owner, OwnerDocument, OwnerStatus } from 'src/schemas/Owner.schema';
 import { Web3ETH } from 'src/blockchain/web3.eth';
 
@@ -57,8 +53,7 @@ export class TransactionsAdminService {
     private nftModel: Model<NFTDocument>,
     @InjectModel(Owner.name)
     private ownerModel: Model<OwnerDocument>,
-    @InjectModel(Redemption.name)
-    private redemptionModel: Model<RedemptionDocument>,
+
   ) {}
 
   async findAll(requestData: FindTransactionDto) {
@@ -293,19 +288,7 @@ export class TransactionsAdminService {
       throw ApiError();
     }
     // is faulty token redeemed
-    const redemptionInfo = await this.redemptionModel.aggregate([
-      { $unwind: '$items' },
-      {
-        $match: {
-          nftId,
-          tokenId: faultyToken,
-          status: RedemptionStatus.REDEEMED,
-        },
-      },
-    ]);
-    if (redemptionInfo?.length > 0) {
-      throw ApiError();
-    }
+  
     // lets start create transaction
     const transactionId = Utils.createObjectId();
     const data = {
