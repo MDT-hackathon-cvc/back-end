@@ -518,7 +518,7 @@ export class CommonService implements OnModuleInit {
       const attributes = [];
       for (const [key, value] of Object.entries(config.attributes)) {
         const attribute: any = value;
-        attribute.name = key;
+        // attribute.name = key;
         delete attribute.display;
         attributes.push(attribute);
       }
@@ -527,7 +527,7 @@ export class CommonService implements OnModuleInit {
       const currencies = [];
       for (const [key, value] of Object.entries(config.currencies)) {
         const currency: any = value;
-        currency.name = key;
+        // currency.name = key;
         currencies.push(currency);
       }
       config.currencies = currencies;

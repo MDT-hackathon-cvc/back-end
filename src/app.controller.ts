@@ -34,7 +34,7 @@ export class AppController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  // @Roles(UserRole.ADMIN, )
   @ApiBearerAuth()
   @Get('/full-config')
   getFullConfig() {
@@ -42,7 +42,7 @@ export class AppController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  // @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @Post('/config')
   updateConfig(@Body() requestData: any) {
@@ -50,7 +50,7 @@ export class AppController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  // @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   @Post('/clear-cache')
   clearCache() {
@@ -59,7 +59,7 @@ export class AppController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @Roles(UserRole.ADMIN)
+  // @Roles(UserRole.ADMIN)
   @Post('/clear-queue')
   clearQueue(@Body() requestData: any) {
     return this.appService.clearQueue(requestData);
@@ -78,7 +78,7 @@ export class AppController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  // @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Get('admin/permissions')
   getPermissionAdmin(@Request() req) {
     return this.appService.getPermissionAdmin(req.user.address);

@@ -120,29 +120,14 @@ export class Config {
   @Prop()
   ipfsGateway: string;
 
-  @Prop({ default: false })
-  isMaintenance: boolean;
-
   @Prop()
   mintingQuantityMax: number;
 
   @Prop()
   userMintingQuantityMax: number;
 
-  @Prop()
-  percentRedemptionValue: number;
-
-  @Prop()
-  redemptionValueBlackDiamond: number;
-
   @Prop({ type: Signer })
   signer: Signer;
-
-  @Prop()
-  percentBDARatio: number;
-
-  @Prop()
-  percentCommissionRatio: number;
 }
 
 export const ConfigSchema = SchemaFactory.createForClass(Config);
