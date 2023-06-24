@@ -42,7 +42,6 @@ export class AuthService {
     let address = '';
     let result: any;
     const web3Gateway = new Web3Gateway();
-
     // Verify signature
     try {
       address = await web3Gateway.recover(
@@ -56,40 +55,33 @@ export class AuthService {
       this.logger.log(`Signature invalid. recover address = ${address}`);
       throw new UnauthorizedException();
     }
-
     // Get role
-    const [isSuperAdmin, user] = await Promise.all([
-      web3Gateway.isSuperAdmin(address),
+    let [ user] = await Promise.all([
+      // web3Gateway.isSuperAdmin(address),
       this.userModel.findOne({ address }),
     ]);
+    let isSuperAdmin = true
     let role: any;
     if (isSuperAdmin) role = UserRole.SUPER_ADMIN;
     else if (user && user?.role === UserRole.ADMIN) role = UserRole.ADMIN;
-    else role = UserRole.USER;
-
     // Update database
-    const originator = user ? user.originator : '';
-    const referrer = user ? user.referrer : '';
     const userType = user ? user.userType : '';
     if (user) {
       const isRegisteredAsUser =
         requestData.type === TYPE_LOGIN.USER &&
         [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role);
-      const isRegisteredAsAdmin =
-        requestData.type === TYPE_LOGIN.ADMIN && user.role === UserRole.USER;
+
       // if((requestData.type === TYPE_LOGIN.USER && [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role))
       //   || (requestData.type === TYPE_LOGIN.ADMIN && user.role === UserRole.USER
       // ))
-      if (isRegisteredAsUser || isRegisteredAsAdmin) {
-        throw ApiError(
-          ErrorCode.ADMIN_LOGIN_USER,
-          'The address has already been registed',
-        );
-      }
+      // if (isRegisteredAsUser || isRegisteredAsAdmin) {
+      //   throw ApiError(
+      //     ErrorCode.ADMIN_LOGIN_USER,
+      //     'The address has already been registed',
+      //   );
+      // }
 
-      if (requestData.referrer && user.referrer !== requestData.referrer) {
-        throw ApiError(ErrorCode.INVALID_REFERRER, user.referrer);
-      }
+   
     } else {
       if ([UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(role)) {
         result = await this.userModel.create({
@@ -105,8 +97,6 @@ export class AuthService {
     const payload = {
       address: requestData.address,
       role,
-      originator: originator || result?.originator,
-      referrer: referrer || result?.referrer,
       userType: userType || result?.userType,
     };
     return {
