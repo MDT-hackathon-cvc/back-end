@@ -789,14 +789,6 @@ export class TransactionsService {
     }
   }
 
-  async caculateEquityShareByUser(address: string) {
-    const userInfo = await this.commonService.findUserByAddress(address);
-    const equityShare = await this.commonService.caculatingEnquityShares(
-      userInfo,
-      null,
-    );
-    return equityShare;
-  }
 
   async validateCreateTransactionAdminMint(
     requestData: CreateTransactionDto,

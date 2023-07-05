@@ -1218,7 +1218,6 @@ export class CommonService implements OnModuleInit {
     ) {
       const childrenUser = this.updateUserBecomeBDA(userInfo, session);
       userInfo.userType = UserType.BDA;
-      userInfo.equityShare = await this.caculatingEnquityShares(userInfo, null);
       if (
         new BigNumber(userInfo.personalVolume.toString()).gte(
           CONFIG_TO_BECOME_BDA,
@@ -1335,19 +1334,6 @@ export class CommonService implements OnModuleInit {
       );
     }
 
-    // add promises
-    promise.push(originatorInfo.save({ session }));
-    promise.push(referrerInfo.save({ session }));
-    const pathIds = await Promise.all(
-      this.updateEquityShareFromPathId(
-        userInfo.pathId,
-        transaction,
-        session,
-        referrerInfo,
-      ),
-    );
-
-    promise.push(...pathIds);
     const result = await Promise.all(promise);
     return result;
   }
@@ -1396,37 +1382,6 @@ export class CommonService implements OnModuleInit {
    * @param session
    * @returns
    */
-  updateEquityShareFromPathId(
-    pathId: any[],
-    transaction: any,
-    session: any,
-    referrerInfo: any,
-  ) {
-    return pathId.map(async (item: any) => {
-      const bdaInfo = await this.findUserByAddress(item);
-      const quantityOfToken = await this.countingOwnedTokenByUser(bdaInfo);
-      if (
-        referrerInfo.address === bdaInfo.address &&
-        bdaInfo.userType === UserType.COMMON &&
-        new BigNumber(bdaInfo.personalVolume.toString())
-          .plus(transaction?.revenue?.toString() || 0)
-          .gte(CONFIG_TO_BECOME_BDA) &&
-        quantityOfToken > 0
-      ) {
-        bdaInfo.userType = UserType.BDA;
-        bdaInfo.haveReceivedBlackFromAdmin = false;
-      }
-      if (this.isAbleToCaculateEquityShare(bdaInfo)) {
-        const equityShares = await this.caculatingEnquityShares(
-          bdaInfo,
-          transaction,
-        );
-        bdaInfo.equityShare = equityShares;
-        return bdaInfo.save({ session });
-      }
-      return bdaInfo;
-    });
-  }
 
   /**
    * Caculating equity shares of a BDA
@@ -1434,47 +1389,7 @@ export class CommonService implements OnModuleInit {
    * @param transaction: transaction model
    * @returns equity shares of BDA
    */
-  async caculatingEnquityShares(bda: any, transaction: any) {
-    // find direct children and total volume
-    const directChildren = await this.getChildrenOrDirectRefereeFromAddress(
-      bda.address,
-      true,
-    );
-    // get list volume of direct children
-    const listChildVolume = await Promise.all(
-      this.getListChildVolume(directChildren, transaction),
-    );
 
-    // total volume of direct children
-    const sumVolumeChildren = listChildVolume.reduce((sum, currItem) => {
-      sum = new BigNumber(currItem?.totalVolume || 0).plus(sum);
-      return sum;
-    }, 0);
-
-    // condition to caculate equity shares
-    if (new BigNumber(sumVolumeChildren).lt(VALUE_A_SHARE)) {
-      return 0;
-    }
-    // get 40% of group volume
-    const fortyPercentOfTotalGroup =
-      sumVolumeChildren.multipliedBy(FORTY_PERCENT);
-    // caculate equity shares
-    const sumVolumeWithFortyPercent = listChildVolume.reduce(
-      (sum, currItem) => {
-        const minValue = Math.min(
-          new BigNumber(currItem?.totalVolume?.toString() || 0).toNumber(),
-          fortyPercentOfTotalGroup.toNumber(),
-        );
-        sum = new BigNumber(minValue).plus(sum);
-        return sum;
-      },
-      0,
-    );
-    const equityShares = Math.floor(
-      sumVolumeWithFortyPercent.dividedBy(VALUE_A_SHARE).toNumber(),
-    );
-    return equityShares;
-  }
 
   /**
    * Caculating volume of user level 1 (excluding all children of this user and one)
@@ -3150,11 +3065,7 @@ export class CommonService implements OnModuleInit {
           ),
         );
       }
-      const equityShares = await this.caculatingEnquityShares(
-        receiver,
-        transaction,
-      );
-      receiver.equityShare = equityShares;
+
       promises.push(receiver.save({ session }));
       promises.push(...children);
     }
@@ -3233,11 +3144,7 @@ export class CommonService implements OnModuleInit {
           session,
         ),
       );
-      const equityShares = await this.caculatingEnquityShares(
-        receiver,
-        transaction,
-      );
-      receiver.equityShare = equityShares;
+
       promises.push(receiver.save({ session }));
       promises.push(...children);
     }

@@ -56,14 +56,8 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     // Get role
-    let [ user] = await Promise.all([
-      // web3Gateway.isSuperAdmin(address),
-      this.userModel.findOne({ address }),
-    ]);
-    let isSuperAdmin = true
-    let role: any;
-    if (isSuperAdmin) role = UserRole.SUPER_ADMIN;
-    else if (user && user?.role === UserRole.ADMIN) role = UserRole.ADMIN;
+    let user= await this.userModel.findOne({ address });
+    // let isSuperAdmin = true
     // Update database
     const userType = user ? user.userType : '';
     if (user) {
@@ -71,32 +65,23 @@ export class AuthService {
         requestData.type === TYPE_LOGIN.USER &&
         [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role);
 
-      // if((requestData.type === TYPE_LOGIN.USER && [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role))
-      //   || (requestData.type === TYPE_LOGIN.ADMIN && user.role === UserRole.USER
-      // ))
-      // if (isRegisteredAsUser || isRegisteredAsAdmin) {
-      //   throw ApiError(
-      //     ErrorCode.ADMIN_LOGIN_USER,
-      //     'The address has already been registed',
-      //   );
-      // }
+ 
+      const isRegisteredAsAdmin =
+        requestData.type === TYPE_LOGIN.ADMIN && user.role === UserRole.USER;
 
-   
-    } else {
-      if ([UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(role)) {
-        result = await this.userModel.create({
-          address,
-          role,
-          status: UserStatus.ACTIVE,
-        });
-      } else {
-        result = await this.insertUser(address, requestData);
+      if (isRegisteredAsUser || isRegisteredAsAdmin) {
+        throw ApiError(
+          ErrorCode.ADMIN_LOGIN_USER,
+          'Bad request!',
+        );
       }
+    } else {
+      result = await this.insertUser(address, requestData);
     }
 
     const payload = {
       address: requestData.address,
-      role,
+      role: user ? user.role : result.role,
       userType: userType || result?.userType,
     };
     return {
@@ -108,84 +93,11 @@ export class AuthService {
 
   async insertUser(address: string, requestData: LoginDto) {
     const userDto: any = {};
-    const promiseNoti = [];
-
-    let referrerInfo: any;
-    if (requestData?.referrer) {
-      referrerInfo = await this.userModel.findOne({
-        address: requestData.referrer,
-      });
-
-      if (!referrerInfo) {
-        throw ApiError(
-          ErrorCode.INVALID_DATA,
-          'The referrer has not existence',
-        );
-      }
-
-      if (referrerInfo.role === UserRole.ADMIN) {
-        throw ApiError(
-          ErrorCode.INVALID_DATA,
-          'The referrer must be different to admin',
-        );
-      }
-
-      if (referrerInfo.kycInfo.kycStatus !== KYCStatus.VERIFIED) {
-        throw ApiError(
-          ErrorCode.INVALID_DATA,
-          'The referrer must be verify kyc',
-        );
-      }
-
-      // push noti for referrer address
-      promiseNoti.push(
-        this.commonService.pushNotificationUser(NotificationType.N13, {
-          toAddress: referrerInfo.address,
-          userAddress: address,
-        }),
-      );
-      // push noti for originator address (BDA)
-      promiseNoti.push(
-        this.commonService.pushNotificationUser(NotificationType.N14, {
-          toAddress: referrerInfo.originator,
-          userAddress: address,
-          referralAddress: referrerInfo.address,
-        }),
-      );
-    } else {
-      referrerInfo = await this.userModel.findOne({
-        role: UserRole.SYSTEM,
-      });
-    }
-
-    referrerInfo.directReferee += 1;
-    // update equity shared
-    await this.updateEquityShare(referrerInfo);
-    await referrerInfo.save();
 
     userDto.address = address;
-    userDto.referrer = referrerInfo.address;
-    userDto.originator =
-      referrerInfo.userType === UserType.BDA
-        ? referrerInfo.address
-        : referrerInfo.originator;
-    userDto.pathId = [...referrerInfo.pathId, referrerInfo.address];
+    userDto.role  =UserRole.USER
 
     const result = this.userModel.create(userDto);
-    // push noti
-    if (promiseNoti.length > 0) {
-      await Promise.all(promiseNoti);
-    }
     return result;
-  }
-
-  async updateEquityShare(referrerInfo: any) {
-    if (this.commonService.isAbleToCaculateEquityShare(referrerInfo)) {
-      const equityShares = await this.commonService.caculatingEnquityShares(
-        referrerInfo,
-        null,
-      );
-      referrerInfo.equityShare = equityShares;
-    }
   }
 }
