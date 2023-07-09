@@ -341,13 +341,13 @@ export class NftsAdminService {
 
     // Upload
     const promise = [];
-    promise.push(
-      AwsUtils.uploadS3(
-        requestData.imageFile.buffer,
-        requestData.imageFile.mimetype,
-        this.getImagePath(nftCode),
-      ),
-    );
+    // promise.push(
+    //   AwsUtils.uploadS3(
+    //     requestData.imageFile.buffer,
+    //     requestData.imageFile.mimetype,
+    //     this.getImagePath(nftCode),
+    //   ),
+    // );
     if (requestData.mediaFile) {
       promise.push(
         AwsUtils.uploadS3(

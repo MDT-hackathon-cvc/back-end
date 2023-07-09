@@ -163,17 +163,7 @@ export class TransactionsService {
       revenue.multipliedBy(currency.usd).toString(),
     );
     // MINTED NFT
-    const affiliateInfor: any = await this.commonService.getAffiliateInfor(
-      userInfor,
-      revenue,
-    );
     // update admin earning
-    const adminEarning = Utils.toDecimal(
-      new BigNumber(revenue)
-        .minus(affiliateInfor?.bda?.commissionFee || 0)
-        .minus(affiliateInfor?.referrerDirect?.commissionFee || 0)
-        .toString(),
-    );
 
     const bdaOfBuyer = await this.commonService.getBDAOfUser(
       userInfor.originator,
@@ -205,8 +195,8 @@ export class TransactionsService {
       event: this.commonService.convertToSimpleEvent(event, categogyInEvent),
       revenue: revenueConvert,
       revenueUsd: revenueUsd,
-      affiliateInfor: affiliateInfor || {},
-      adminEarning,
+      affiliateInfor:  {},
+      adminEarning: null,
     });
   }
 

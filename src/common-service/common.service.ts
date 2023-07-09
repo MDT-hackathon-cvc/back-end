@@ -559,11 +559,6 @@ export class CommonService implements OnModuleInit {
     return currency;
   }
 
-  async findPercentRedemptionValue() {
-    const config = await this.findFullConfig();
-    const percentRedemptionValue = config.percentRedemptionValue || 1.5;
-    return percentRedemptionValue;
-  }
 
   async findSigner() {
     const config = await this.findFullConfig();
@@ -572,12 +567,6 @@ export class CommonService implements OnModuleInit {
       address: config.signer.address,
       privateKey,
     };
-  }
-
-  async findBDARatio() {
-    const config = await this.findFullConfig();
-    const percentBDARation = config.percentBDARatio || 200;
-    return percentBDARation;
   }
 
   async findCommissionRatio() {
@@ -1550,13 +1539,6 @@ export class CommonService implements OnModuleInit {
         promises.push(transaction.save({ session }));
         // Update NFT: status, token id, total supply, total minted
         switch (nft.isNFTBlack) {
-          case true:
-            await this.updateTransferBlackDiamond({
-              transaction,
-              nft,
-              session,
-            });
-            break;
           case false:
             await this.updateNFT({
               transaction,
@@ -2360,7 +2342,6 @@ export class CommonService implements OnModuleInit {
     const commissionRatio = referrer
       ? await this.findCommissionRatio()
       : DEFAULT_COMMISSION_RATIO;
-    const bdaRatio = bdaOfBuyer ? await this.findBDARatio() : DEFAULT_BDA_RATIO;
     const referrerAddress = referrer ? referrer : DEFAULT_REFERRER;
     const bdaAddress = bdaOfBuyer ? bdaOfBuyer : DEFAULT_BDA;
     const dataSign = [
@@ -2369,7 +2350,6 @@ export class CommonService implements OnModuleInit {
       price,
       quantity,
       commissionRatio,
-      bdaRatio,
       toAddress,
       process.env.ADMIN_WALLET_ADDRESS,
       currencyAddress,
@@ -2395,7 +2375,6 @@ export class CommonService implements OnModuleInit {
           Utils.convertDateToSeconds(event.startDate),
           Utils.convertDateToSeconds(event.endDate),
           commissionRatio,
-          bdaRatio,
         ],
         [
           event.creatorAddress, // seller
@@ -2525,29 +2504,6 @@ export class CommonService implements OnModuleInit {
     }
   }
 
-  async calculateCommissionFee(transactionRevenue: any, bda: boolean) {
-    const [percentBDARation, percentCommissionRatio] = await Promise.all([
-      this.findBDARatio(),
-      this.findCommissionRatio(),
-    ]);
-    if (bda) {
-      return {
-        percentage: percentBDARation / DEFAULT_DIVISOR,
-        commissionFee: new BigNumber(transactionRevenue.toString())
-          .multipliedBy(percentBDARation)
-          .dividedBy(DEFAULT_DIVISOR)
-          .toNumber(),
-      };
-    }
-    return {
-      percentage: percentCommissionRatio / DEFAULT_DIVISOR,
-      commissionFee: new BigNumber(transactionRevenue.toString())
-        .multipliedBy(percentCommissionRatio)
-        .dividedBy(DEFAULT_DIVISOR)
-        .toNumber(),
-    };
-  }
-
   async checkBda(address: string) {
     try {
       const user = await this.findUserByAddress(address);
@@ -2558,38 +2514,6 @@ export class CommonService implements OnModuleInit {
     }
   }
 
-  async getAffiliateInfor(userInfor: UserDocument, revenue: any) {
-    const affiliateInfor = {};
-    affiliateInfor['bda'] = {};
-    affiliateInfor['referrerDirect'] = {};
-    const [referrerInfo, originatorInfo] = await Promise.all([
-      this.findUserByAddress(userInfor?.referrer),
-      this.findUserByAddress(userInfor?.originator),
-    ]);
-    if (originatorInfo.userType === UserType.BDA) {
-      const { commissionFee, percentage } = await this.calculateCommissionFee(
-        revenue,
-        true,
-      );
-      affiliateInfor['bda'] = {
-        address: userInfor?.originator,
-        commissionFee,
-        percentage,
-        role: originatorInfo.role,
-      };
-    }
-    const { commissionFee, percentage } = await this.calculateCommissionFee(
-      revenue,
-      false,
-    );
-    affiliateInfor['referrerDirect'] = {
-      address: userInfor?.referrer,
-      commissionFee,
-      percentage,
-      role: referrerInfo.role,
-    };
-    return affiliateInfor;
-  }
 
   async checkOffSaleNft(
     nftId: string,
@@ -2850,27 +2774,7 @@ export class CommonService implements OnModuleInit {
     return user;
   }
 
-  async updateTransferBlackDiamond(data: {
-    transaction: TransactionDocument;
-    nft: NFTDocument;
-    session: any;
-  }) {
-    const { transaction, nft, session } = data;
-    const { fromAddress } = transaction;
-    try {
-      return Promise.all([
-        this.updateTransporter({
-          fromAddress,
-          actionType: ActionType.TRANSFER_BLACK_NFT,
-          transaction,
-          session,
-        }),
-        this.updateReceiverBlackDiamond({ transaction, nft, session }),
-      ]);
-    } catch (error) {
-      throw error;
-    }
-  }
+
 
   async canLoseBDAPermission(
     user: UserDocument,
@@ -3004,96 +2908,6 @@ export class CommonService implements OnModuleInit {
     ]);
   }
 
-  async updateReceiverBlackDiamond(data: {
-    transaction: TransactionDocument;
-    nft: NFTDocument;
-    session: any;
-  }) {
-    const { nft, session, transaction } = data;
-    const { toAddress, tokenIds } = transaction;
-    let receiver;
-    const promises = [];
-    promises.push(
-      this.updateOwnerTransferNft(tokenIds[0], toAddress, session, nft._id),
-    );
-    try {
-      receiver = await this.findUserByAddress(toAddress);
-    } catch (exception) {
-      return Promise.all(promises);
-    }
-
-    if (receiver.userType === UserType.BDA) {
-      return Promise.all(promises);
-    }
-
-    if (
-      new BigNumber(receiver.oldPersonalVolume.toString()).gte(
-        CONFIG_TO_BECOME_BDA,
-      ) ||
-      new BigNumber(receiver.personalVolume.toString()).gte(
-        CONFIG_TO_BECOME_BDA,
-      )
-    ) {
-      const children = this.updateUserBecomeBDA(receiver, session);
-      receiver.userType = UserType.BDA;
-      if (
-        new BigNumber(receiver.personalVolume.toString()).gte(
-          CONFIG_TO_BECOME_BDA,
-        )
-      ) {
-        receiver.haveReceivedBlackFromAdmin = false;
-        promises.push(
-          this.pushNotificationUser(
-            NotificationType.N3,
-            { toAddress: receiver.address },
-            session,
-          ),
-        );
-      } else {
-        promises.push(
-          this.pushNotificationUser(
-            NotificationType.N4,
-            { toAddress: receiver.address },
-            session,
-          ),
-          this.pushNotificationAdmin(
-            NotificationType.P3,
-            {
-              toAddress: receiver.address,
-            },
-            session,
-          ),
-        );
-      }
-
-      promises.push(receiver.save({ session }));
-      promises.push(...children);
-    }
-    return Promise.all(promises);
-  }
-
-  canRegainBDAAfterTransfering(data: { userInfo: UserDocument }) {
-    const { userInfo } = data;
-    switch (userInfo.haveReceivedBlackFromAdmin) {
-      case true:
-        return (
-          userInfo.userType === UserType.COMMON &&
-          new BigNumber(userInfo.personalVolume.toString()).gte(
-            CONFIG_TO_BECOME_BDA,
-          )
-        );
-      case false:
-        return (
-          userInfo.userType === UserType.COMMON &&
-          (new BigNumber(userInfo.oldPersonalVolume.toString()).gte(
-            CONFIG_TO_BECOME_BDA,
-          ) ||
-            new BigNumber(userInfo.personalVolume.toString()).gte(
-              CONFIG_TO_BECOME_BDA,
-            ))
-        );
-    }
-  }
 
   async updateReceiverNFT(data: {
     transaction: TransactionDocument;
@@ -3109,45 +2923,7 @@ export class CommonService implements OnModuleInit {
     } catch (error) {
       return null;
     }
-    if (this.canRegainBDAAfterTransfering({ userInfo: receiver })) {
-      const children = this.updateUserBecomeBDA(receiver, session);
-      receiver.userType = UserType.BDA;
-      if (
-        new BigNumber(receiver.personalVolume.toString()).gte(
-          CONFIG_TO_BECOME_BDA,
-        )
-      ) {
-        receiver.haveReceivedBlackFromAdmin = false;
-        // ADD NOTIFICATION ADMIN
-        promises.push(
-          this.pushNotificationUser(
-            NotificationType.N3,
-            { toAddress: receiver.address },
-            session,
-          ),
-        );
-      } else {
-        promises.push(
-          this.pushNotificationUser(
-            NotificationType.N4,
-            { toAddress: receiver.address },
-            session,
-          ),
-        );
-      }
-      promises.push(
-        this.pushNotificationAdmin(
-          NotificationType.P3,
-          {
-            toAddress: receiver.address,
-          },
-          session,
-        ),
-      );
 
-      promises.push(receiver.save({ session }));
-      promises.push(...children);
-    }
     return Promise.all(promises);
   }
 
