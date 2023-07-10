@@ -231,6 +231,12 @@ export class NFT {
 
   @Prop({ default: false })
   isNFTBlack: boolean;
+
+  @Prop()
+  ipfsImage: string;
+
+  @Prop()
+  ipfsMetadata: string;
 }
 
 export const NFTSchema = SchemaFactory.createForClass(NFT);

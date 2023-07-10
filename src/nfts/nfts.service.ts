@@ -3,12 +3,12 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { UserJWT } from 'src/auth/role.enum';
 import { CommonService } from 'src/common-service/common.service';
-import { THREE_MINUTES } from 'src/common/constants';
+import { ErrorCode, THREE_MINUTES } from 'src/common/constants';
 import { Utils } from 'src/common/utils';
 import { AttributeType, AttributeTypeUser } from 'src/schemas/Config.schema';
 import { NFT, NFTDocument, NFTStatus } from 'src/schemas/NFT.schema';
 import { Owner, OwnerDocument } from 'src/schemas/Owner.schema';
-
+import slugify from 'slugify';
 import {
   Transaction,
   TransactionDocument,
@@ -23,6 +23,11 @@ import {
 import { FindItemOwnerDto } from './dto/user/find-item-owner.dto';
 import { FindTokensCanRedeemDto } from './dto/user/find-tokens-can-redeem.dto';
 import { FindTransactionDto } from './dto/user/find-transaction.dto';
+import { CreateNftDto } from './dto/admin/create-nft.dto';
+import { ApiError } from 'src/common/api';
+import { CounterName } from 'src/schemas/Counter.schema';
+import { IpfsClientType } from 'src/providers/ipfs/ipfs.type';
+import { IpfsGateway } from 'src/providers/ipfs/ipfs.gateway';
 
 @Injectable()
 export class NftsService {
@@ -498,5 +503,51 @@ export class NftsService {
       result.totalOwnerItem = totalOwnerItem;
     }
     return result;
+  }
+
+  async create(requestData: CreateNftDto) {
+    const { name, description, attributes, ipfsUrl } = requestData
+    // Validate
+    const nftCode = await this.commonService.findNextIndex(CounterName.NFT);
+    const nftSlug = slugify(`${requestData.name}-${nftCode}`, { lower: true });
+    const metadata = {
+      name,
+      description,
+      image: ipfsUrl,
+      attributes
+    }
+    const { link } = await this.uploadMetadataToIpfs(metadata);
+
+    const createdNft = new this.nftModel(requestData);
+    createdNft.code = nftCode;
+    createdNft.slug = nftSlug;
+    createdNft.status = NFTStatus.OFF_SALE;
+    createdNft.ipfsImage = ipfsUrl
+    createdNft.name = name;
+    createdNft.description = description
+    createdNft.ipfsMetadata = link
+
+    await createdNft.save();
+    // await this.commonService.addQueueUploadIpfs(createdNft._id.toString());
+    return createdNft;
+  }
+
+  async uploadsFileToIpfs(content: Express.Multer.File) {
+    const ipfsGateway = new IpfsGateway(IpfsClientType.INFURA);
+    console.log('ipfsGateway :>> ', ipfsGateway);
+    const data = await ipfsGateway.upload(content);
+    return {
+      image: data
+    }
+  }
+
+  async uploadMetadataToIpfs(data: any) {
+    const ipfsGateway = new IpfsGateway(IpfsClientType.INFURA);
+    console.log('ipfsGateway :>> ', ipfsGateway);
+    const link = await ipfsGateway.uploadMetadataToIpfs(data);
+    console.log('link :>> ', link);
+    return {
+      link
+    }
   }
 }

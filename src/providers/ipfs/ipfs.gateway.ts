@@ -6,6 +6,7 @@ import { IpfsPinataCloud } from './ipfs.pinata-cloud';
 import { IpfsSelfHost } from './ipfs.self-host';
 import { IIPFS, IpfsClientType } from './ipfs.type';
 import { IpfsWeb3Storage } from './ipfs.web3-storage';
+import { IpfsInfura } from './ipfs.infura';
 
 export class IpfsGateway {
   private readonly logger = new Logger(IpfsGateway.name);
@@ -29,6 +30,8 @@ export class IpfsGateway {
       this.instance = new IpfsWeb3Storage();
     } else if (ipfsClientType === IpfsClientType.PINATA_CLOUD) {
       this.instance = new IpfsPinataCloud();
+    } else if (ipfsClientType === IpfsClientType.INFURA) {
+      this.instance = new IpfsInfura();
     } else {
       this.instance = new IpfsSelfHost();
     }
@@ -42,6 +45,26 @@ export class IpfsGateway {
     while (true) {
       try {
         return this.instance.upload(content);
+      } catch (error) {
+        this.changeClientType();
+        this.logger.warn(`upload(): Retrying ${retry} time. ${error.message}`);
+        retry++;
+        if (retry > MAX_RETRY) {
+          throw error;
+        }
+        await Utils.wait(TIME_WAIT_RETRY);
+      }
+    }
+  }
+
+  public async uploadMetadataToIpfs(data: any) {
+    this.logger.log(
+      `upload(): Upload ipfs. client = ${this.instance.constructor.name}.`,
+    );
+    let retry = 1;
+    while (true) {
+      try {
+        return this.instance.uploadMetadataToIpfs(data);
       } catch (error) {
         this.changeClientType();
         this.logger.warn(`upload(): Retrying ${retry} time. ${error.message}`);

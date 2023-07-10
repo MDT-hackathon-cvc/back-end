@@ -55,12 +55,6 @@ export class NftsAdminService {
     private ownerModel: Model<OwnerDocument>,
   ) {}
 
-  validateUpsertNFT(requestData: CreateNftDto, isUpdate = false) {
-    if (!requestData.imageFile && !isUpdate) {
-      throw ApiError(ErrorCode.INVALID_DATA, 'image must be not null');
-    }
-  }
-
   getImagePath(nftCode: string) {
     return `nft/${nftCode}/img`;
   }
@@ -322,66 +316,6 @@ export class NftsAdminService {
       }
     }
     return { ...result?.toObject(), lockingBalance };
-  }
-
-  async create(requestData: CreateNftDto) {
-    // Validate
-    this.validateUpsertNFT(requestData);
-    const nftCode = await this.commonService.findNextIndex(CounterName.NFT);
-    const nftSlug = slugify(`${requestData.name}-${nftCode}`, { lower: true });
-    const createdNft = new this.nftModel(requestData);
-    createdNft.code = nftCode;
-    createdNft.slug = nftSlug;
-    // requestData.token.standard = TokenStandard.ERC_721;
-    createdNft.token.address = process.env.CONTRACT_ERC_721;
-    createdNft.token.totalAvailable = requestData.token.totalSupply;
-    createdNft.token.totalMinted = 0;
-    createdNft.token.totalBurnt = 0;
-    createdNft.status = NFTStatus.OFF_SALE;
-
-    // Upload
-    const promise = [];
-    // promise.push(
-    //   AwsUtils.uploadS3(
-    //     requestData.imageFile.buffer,
-    //     requestData.imageFile.mimetype,
-    //     this.getImagePath(nftCode),
-    //   ),
-    // );
-    if (requestData.mediaFile) {
-      promise.push(
-        AwsUtils.uploadS3(
-          requestData.mediaFile.buffer,
-          requestData.mediaFile.mimetype,
-          this.getMediaPath(nftCode),
-        ),
-      );
-
-      const [imgUrl, mediaUrl] = await Promise.all(promise);
-      createdNft.image = {
-        url: imgUrl,
-        mediumUrl: imgUrl,
-        smallUrl: imgUrl,
-        mimeType: requestData.imageFile.mimetype,
-      };
-      createdNft.media = {
-        url: mediaUrl,
-        type: requestData.mediaType,
-        mimeType: requestData.mediaFile.mimetype,
-      };
-    } else {
-      const [imgUrl] = await Promise.all(promise);
-      createdNft.image = {
-        url: imgUrl,
-        mediumUrl: imgUrl,
-        smallUrl: imgUrl,
-        mimeType: requestData.imageFile.mimetype,
-      };
-    }
-
-    await createdNft.save();
-    await this.commonService.addQueueUploadIpfs(createdNft._id.toString());
-    return createdNft;
   }
 
   async createNftTest() {

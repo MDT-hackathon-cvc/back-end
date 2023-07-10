@@ -15,6 +15,8 @@ import {
   isObject,
   ValidateNested,
   Max,
+  IsArray,
+  isString,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { CreateSaleOrderDto } from './create-sale-order.dto';
@@ -28,46 +30,35 @@ class Token {
   totalSupply: number;
 }
 
+export class Ettributes {
+  @ApiProperty()
+  @IsString()
+  trait_type: string;
+
+  @ApiProperty()
+  @IsString()
+  value: string;
+}
+
 export class CreateNftDto {
   @ApiProperty()
-  name = '';
+  @IsString()
+  name: string;
 
   @ApiProperty()
-  description = '';
+  @IsString()
+  description: string;
 
-  // @ApiProperty()
-  // @Type(() => Number)
-  // @IsNumber()
-  // royaltyFee = 0;
-
-  // @ApiProperty()
-  // @IsObject()
-  // attributes: any;
-
-  @ApiProperty()
-  @Type(() => Token)
-  @IsObject()
-  // @ValidateNested()
-  token: Token;
-
-  // @ApiProperty()
-  // @Transform(({ value }) => value === 'true')
-  // @IsBoolean()
-  // isPutOnSale = false;
-
-  // @ApiProperty()
-  // @Type(() => CreateSaleOrderDto)
-  // @ValidateIf((obj) => obj.isPutOnSale === true)
-  // @IsObject()
-  // @ValidateNested()
-  // saleOrder: CreateSaleOrderDto;
+  @ApiProperty({
+    default: {
+      trait_type: 'Base',
+      value: 'Starfish',
+    },
+  })
+  @IsArray()
+  attributes: [Ettributes];
 
   @ApiProperty()
-  mediaType = '';
-
-  imageFile: Express.Multer.File;
-  // imageMedium: Express.Multer.File;
-  // imageSmall: Express.Multer.File;
-  mediaFile: Express.Multer.File;
-  creatorAddress: string;
+  @IsString()
+  ipfsUrl: string;
 }

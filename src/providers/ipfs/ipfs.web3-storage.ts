@@ -7,6 +7,9 @@ export class IpfsWeb3Storage implements IIPFS {
   private readonly logger = new Logger(IpfsWeb3Storage.name);
 
   constructor() {}
+  uploadMetadataToIpfs(data: any): Promise<string> {
+    throw new Error('Method not implemented.');
+  }
 
   public async upload(content: Express.Multer.File) {
     const response: any = await axios({

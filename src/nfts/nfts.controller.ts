@@ -1,11 +1,16 @@
 import { FindTokensCanRedeemDto } from './dto/user/find-tokens-can-redeem.dto';
 import {
+  Body,
   Controller,
   Get,
   Param,
+  Post,
   Query,
   Request,
+  UploadedFile,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { NftsService } from './nfts.service';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -18,6 +23,11 @@ import { Roles } from 'src/auth/roles.decorator';
 import { FindItemOwnerDto } from './dto/user/find-item-owner.dto';
 import { UserRole } from 'src/schemas/User.schema';
 import { FindNftDto } from './dto/admin/find-nft.dto';
+import { CreateNftDto } from './dto/admin/create-nft.dto';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 
 @ApiTags('nfts')
 @Controller('nfts')
@@ -78,5 +88,22 @@ export class NftsController {
     @Query() requestData: FindItemOwnerDto,
   ) {
     return this.nftsService.findOwned(req.user, id, requestData);
+  }
+
+  @Post()
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'image', maxCount: 1 },
+      { name: 'mediaFile', maxCount: 1 },
+    ]),
+  )
+  create(@Request() req, @Body() requestData: CreateNftDto) {
+    return this.nftsService.create(requestData);
+  }
+
+  @Post('/ipfs')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadToIpfs(@Request() req, @UploadedFile() file: Express.Multer.File) {
+    return this.nftsService.uploadsFileToIpfs(file);
   }
 }

@@ -65,30 +65,6 @@ export class NftsAdminController {
     return this.nftsService.getDetailTokenId(tokenId);
   }
 
-  @Post()
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'image', maxCount: 1 },
-      { name: 'mediaFile', maxCount: 1 },
-    ]),
-  )
-  create(
-    @Request() req,
-    @Body() requestData: CreateNftDto,
-    @UploadedFiles()
-    files: {
-      image?: Express.Multer.File[];
-      mediaFile?: Express.Multer.File[];
-    },
-  ) {
-    requestData.imageFile = files && files.image && files.image[0];
-    requestData.mediaFile = files && files.mediaFile && files.mediaFile[0];
-
-    requestData.creatorAddress = req.user.address;
-    // requestData.saleOrder.creatorAddress = req.user.address;
-    return this.nftsService.create(requestData);
-  }
-
   @Post('createNftTest')
   createNftTest() {
     return this.nftsService.createNftTest();

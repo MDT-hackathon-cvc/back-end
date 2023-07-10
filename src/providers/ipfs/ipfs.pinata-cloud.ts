@@ -8,6 +8,9 @@ export class IpfsPinataCloud implements IIPFS {
   private readonly logger = new Logger(IpfsPinataCloud.name);
 
   constructor() {}
+  uploadMetadataToIpfs(data: any): Promise<string> {
+    throw new Error('Method not implemented.');
+  }
 
   public async upload(content: Express.Multer.File) {
     const data = new FormData();

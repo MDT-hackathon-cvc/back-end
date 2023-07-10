@@ -10,6 +10,9 @@ export class IpfsSelfHost implements IIPFS {
   constructor() {
     this.client = create(process.env.IPFS_URI);
   }
+  uploadMetadataToIpfs(data: any): Promise<string> {
+    throw new Error('Method not implemented.');
+  }
 
   public async upload(content: Express.Multer.File) {
     const { cid } = await this.client.add(content.buffer);
@@ -20,4 +23,5 @@ export class IpfsSelfHost implements IIPFS {
     const { cid } = await this.client.add(urlSource(url));
     return cid.toString();
   }
+
 }
