@@ -171,7 +171,7 @@ export class CommonService implements OnModuleInit {
   async onModuleInit() {
     // await this.initIpfsQueue();
     // await this.initTransactionProcessingQueue();
-    await this.initKycQueue();
+    // await this.initKycQueue();
   }
 
   // async initIpfsQueue() {
