@@ -169,159 +169,159 @@ export class CommonService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.initIpfsQueue();
-    await this.initTransactionProcessingQueue();
+    // await this.initIpfsQueue();
+    // await this.initTransactionProcessingQueue();
     await this.initKycQueue();
   }
 
-  async initIpfsQueue() {
-    this.ipfsQueue.process(async (job) => {
-      try {
-        const ipfsGateway = new IpfsGateway();
-        const nftId = job.data;
-        const nft = await this.nftModel.findById(nftId);
-        if (nft?.isDeleted) {
-          return;
-        }
+  // async initIpfsQueue() {
+  //   this.ipfsQueue.process(async (job) => {
+  //     try {
+  //       const ipfsGateway = new IpfsGateway();
+  //       const nftId = job.data;
+  //       const nft = await this.nftModel.findById(nftId);
+  //       if (nft?.isDeleted) {
+  //         return;
+  //       }
 
-        this.logger.log(`initIpfsQueue(): Uploading IPFS for NFT ID ${nft.id}`);
-        const updateCid = {};
-        if (!nft.token.cid) {
-          this.logger.debug(`nft.image.url`, nft.image.url);
-          const cid = await ipfsGateway.uploadFromURL(
-            nft.image.url,
-            nft.image.mimeType,
-          );
-          updateCid['token.cid'] = cid;
-        }
-        if (nft.media && nft.media.url && !nft.token.cidMedia) {
-          this.logger.debug(`nft.media.url`, nft.media.url);
-          const cid = await ipfsGateway.uploadFromURL(
-            nft.media.url,
-            nft.media.mimeType,
-          );
-          updateCid['token.cidMedia'] = cid;
-        }
-        await nft.updateOne({
-          $set: {
-            ...updateCid,
-          },
-        });
-        return updateCid;
-      } catch (error) {
-        return Promise.reject(error);
-      }
-    });
-    this.ipfsQueue.on('succeeded', (job, result) => {
-      // prettier-ignore
-      this.logger.log(`initIpfsQueue(): Upload IPFS for NFT ID ${job.id} succeeded. Cid = ${JSON.stringify(result)}`);
-    });
-    this.ipfsQueue.on('failed', (job, err) => {
-      this.logger.error(
-        `initIpfsQueue(): Upload IPFS for NFT ID ${job.id} failed: ${err.message}`,
-      );
-      this.logError(err);
-    });
+  //       this.logger.log(`initIpfsQueue(): Uploading IPFS for NFT ID ${nft.id}`);
+  //       const updateCid = {};
+  //       if (!nft.token.cid) {
+  //         this.logger.debug(`nft.image.url`, nft.image.url);
+  //         const cid = await ipfsGateway.uploadFromURL(
+  //           nft.image.url,
+  //           nft.image.mimeType,
+  //         );
+  //         updateCid['token.cid'] = cid;
+  //       }
+  //       if (nft.media && nft.media.url && !nft.token.cidMedia) {
+  //         this.logger.debug(`nft.media.url`, nft.media.url);
+  //         const cid = await ipfsGateway.uploadFromURL(
+  //           nft.media.url,
+  //           nft.media.mimeType,
+  //         );
+  //         updateCid['token.cidMedia'] = cid;
+  //       }
+  //       await nft.updateOne({
+  //         $set: {
+  //           ...updateCid,
+  //         },
+  //       });
+  //       return updateCid;
+  //     } catch (error) {
+  //       return Promise.reject(error);
+  //     }
+  //   });
+  //   this.ipfsQueue.on('succeeded', (job, result) => {
+  //     // prettier-ignore
+  //     this.logger.log(`initIpfsQueue(): Upload IPFS for NFT ID ${job.id} succeeded. Cid = ${JSON.stringify(result)}`);
+  //   });
+  //   this.ipfsQueue.on('failed', (job, err) => {
+  //     this.logger.error(
+  //       `initIpfsQueue(): Upload IPFS for NFT ID ${job.id} failed: ${err.message}`,
+  //     );
+  //     this.logError(err);
+  //   });
 
-    // Init data when restart server
-    const nfts = await this.nftModel.find({
-      $and: [
-        {
-          isDeleted: false,
-        },
-        {
-          $or: [{ 'token.cid': { $exists: false } }, { 'token.cid': '' }],
-        },
-      ],
-    });
-    for (let index = 0; index < nfts.length; index++) {
-      const nft = nfts[index];
-      const currentJob = await this.ipfsQueue.getJob(nft._id.toString());
-      if (currentJob) {
-        await currentJob.remove();
-      }
-      this.logger.log(
-        `initIpfsQueue(): Add Job Upload IPFS for NFT ID ${nft._id.toString()}`,
-      );
-      await this.addQueueUploadIpfs(nft._id.toString());
-    }
-  }
+  //   // Init data when restart server
+  //   const nfts = await this.nftModel.find({
+  //     $and: [
+  //       {
+  //         isDeleted: false,
+  //       },
+  //       {
+  //         $or: [{ 'token.cid': { $exists: false } }, { 'token.cid': '' }],
+  //       },
+  //     ],
+  //   });
+  //   for (let index = 0; index < nfts.length; index++) {
+  //     const nft = nfts[index];
+  //     const currentJob = await this.ipfsQueue.getJob(nft._id.toString());
+  //     if (currentJob) {
+  //       await currentJob.remove();
+  //     }
+  //     this.logger.log(
+  //       `initIpfsQueue(): Add Job Upload IPFS for NFT ID ${nft._id.toString()}`,
+  //     );
+  //     await this.addQueueUploadIpfs(nft._id.toString());
+  //   }
+  // }
 
-  async initTransactionProcessingQueue() {
-    this.transactionProcessingQueue.process(async (job) => {
-      try {
-        const transactionId = job.data;
-        const transaction = await this.transactionModel.findById(transactionId);
-        this.logger.log(
-          `Checking transaction ${transaction.id}, hash = ${transaction.hash}`,
-        );
-        if (transaction.status !== TransactionStatus.PROCESSING) {
-          this.logger.debug(
-            `Transaction ${transaction.hash} is not in processing status. Current status = ${transaction.status}`,
-          );
-          return;
-        }
+  // async initTransactionProcessingQueue() {
+  //   this.transactionProcessingQueue.process(async (job) => {
+  //     try {
+  //       const transactionId = job.data;
+  //       const transaction = await this.transactionModel.findById(transactionId);
+  //       this.logger.log(
+  //         `Checking transaction ${transaction.id}, hash = ${transaction.hash}`,
+  //       );
+  //       if (transaction.status !== TransactionStatus.PROCESSING) {
+  //         this.logger.debug(
+  //           `Transaction ${transaction.hash} is not in processing status. Current status = ${transaction.status}`,
+  //         );
+  //         return;
+  //       }
 
-        const session = await this.connection.startSession();
-        await session.withTransaction(async () => {
-          const web3Gateway = new Web3Gateway();
-          const transactionReceipt = await web3Gateway.getTransactionReceipt(
-            transaction.hash,
-          );
-          if (!transactionReceipt) {
-            return Promise.reject(
-              new Error(
-                `Can't get transaction receipt for hash ${transaction.hash}`,
-              ),
-            );
-          }
-          if (!transactionReceipt.status) {
-            const promisesUpdate = [];
-            transaction.status = TransactionStatus.FAILED;
-            promisesUpdate.push(transaction.save({ session }));
-            const results = await Promise.all(promisesUpdate);
-            this.logPromise(promisesUpdate, results);
-          } else {
-            this.logger.debug(
-              `Transaction ${transaction.hash} has been successful`,
-            );
-          }
-        });
-        session.endSession();
-      } catch (error) {
-        return Promise.reject(error);
-      }
-    });
-    this.transactionProcessingQueue.on('succeeded', (job, result) => {
-      // prettier-ignore
-      this.logger.log(`Check transaction ${job.id} succeeded.`);
-    });
-    this.transactionProcessingQueue.on('failed', async (job, err) => {
-      this.logger.error(`Check transaction ${job.id} failed: ${err.message}`);
-      const trans = await this.transactionModel.findById(job.id);
-      if (!trans) {
-        await job.remove();
-      }
+  //       const session = await this.connection.startSession();
+  //       await session.withTransaction(async () => {
+  //         const web3Gateway = new Web3Gateway();
+  //         const transactionReceipt = await web3Gateway.getTransactionReceipt(
+  //           transaction.hash,
+  //         );
+  //         if (!transactionReceipt) {
+  //           return Promise.reject(
+  //             new Error(
+  //               `Can't get transaction receipt for hash ${transaction.hash}`,
+  //             ),
+  //           );
+  //         }
+  //         if (!transactionReceipt.status) {
+  //           const promisesUpdate = [];
+  //           transaction.status = TransactionStatus.FAILED;
+  //           promisesUpdate.push(transaction.save({ session }));
+  //           const results = await Promise.all(promisesUpdate);
+  //           this.logPromise(promisesUpdate, results);
+  //         } else {
+  //           this.logger.debug(
+  //             `Transaction ${transaction.hash} has been successful`,
+  //           );
+  //         }
+  //       });
+  //       session.endSession();
+  //     } catch (error) {
+  //       return Promise.reject(error);
+  //     }
+  //   });
+  //   this.transactionProcessingQueue.on('succeeded', (job, result) => {
+  //     // prettier-ignore
+  //     this.logger.log(`Check transaction ${job.id} succeeded.`);
+  //   });
+  //   this.transactionProcessingQueue.on('failed', async (job, err) => {
+  //     this.logger.error(`Check transaction ${job.id} failed: ${err.message}`);
+  //     const trans = await this.transactionModel.findById(job.id);
+  //     if (!trans) {
+  //       await job.remove();
+  //     }
 
-      this.logError(err);
-    });
+  //     this.logError(err);
+  //   });
 
-    // Init data when restart server
-    const transactions = await this.transactionModel.find({
-      type: TransactionType.TRANSFER,
-      status: TransactionStatus.PROCESSING,
-    });
-    for (let index = 0; index < transactions.length; index++) {
-      const transaction = transactions[index];
-      const currentJob = await this.transactionProcessingQueue.getJob(
-        transaction.id,
-      );
-      if (currentJob) {
-        await currentJob.remove();
-      }
-      await this.addQueueCheckTransaction(transaction);
-    }
-  }
+  //   // Init data when restart server
+  //   const transactions = await this.transactionModel.find({
+  //     type: TransactionType.TRANSFER,
+  //     status: TransactionStatus.PROCESSING,
+  //   });
+  //   for (let index = 0; index < transactions.length; index++) {
+  //     const transaction = transactions[index];
+  //     const currentJob = await this.transactionProcessingQueue.getJob(
+  //       transaction.id,
+  //     );
+  //     if (currentJob) {
+  //       await currentJob.remove();
+  //     }
+  //     await this.addQueueCheckTransaction(transaction);
+  //   }
+  // }
 
   async clearQueueUploadIpfs(id: string) {
     this.logger.log(`clearQueueUploadIpfs(): Clear Queue Upload IPFS ${id}`);
@@ -331,22 +331,22 @@ export class CommonService implements OnModuleInit {
     }
   }
 
-  async addQueueUploadIpfs(id: string) {
-    this.logger.log(
-      `addQueueUploadIpfs(): Add Queue Upload IPFS for NFT ${id}`,
-    );
-    const currentJob = await this.ipfsQueue.getJob(id);
-    if (currentJob) {
-      return;
-    }
-    const job = this.ipfsQueue
-      .createJob(id)
-      .setId(id)
-      .retries(100000000000000000000)
-      .backoff('fixed', 5000)
-      .delayUntil(moment().add(30, 'second').toDate());
-    await job.save();
-  }
+  // async addQueueUploadIpfs(id: string) {
+  //   this.logger.log(
+  //     `addQueueUploadIpfs(): Add Queue Upload IPFS for NFT ${id}`,
+  //   );
+  //   const currentJob = await this.ipfsQueue.getJob(id);
+  //   if (currentJob) {
+  //     return;
+  //   }
+  //   const job = this.ipfsQueue
+  //     .createJob(id)
+  //     .setId(id)
+  //     .retries(100000000000000000000)
+  //     .backoff('fixed', 5000)
+  //     .delayUntil(moment().add(30, 'second').toDate());
+  //   await job.save();
+  // }
 
   async clearQueueCheckTransaction(id: string) {
     this.logger.log(`Clear Queue Check Transaction ${id}`);
