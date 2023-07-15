@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Query,
   Request,
   UploadedFile,
@@ -19,7 +20,6 @@ import { FindTransactionDto } from './dto/user/find-transaction.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
-// import { Role } from 'src/auth/role.enum';
 import { FindItemOwnerDto } from './dto/user/find-item-owner.dto';
 import { UserRole } from 'src/schemas/User.schema';
 import { FindNftDto } from './dto/admin/find-nft.dto';
@@ -28,6 +28,7 @@ import {
   FileFieldsInterceptor,
   FileInterceptor,
 } from '@nestjs/platform-express';
+import { MintNftDto } from './dto/user/mint-nft.dto';
 
 @ApiTags('nfts')
 @Controller('nfts')
@@ -105,5 +106,10 @@ export class NftsController {
   @UseInterceptors(FileInterceptor('file'))
   uploadToIpfs(@Request() req, @UploadedFile() file: Express.Multer.File) {
     return this.nftsService.uploadsFileToIpfs(file);
+  }
+
+  @Put('/mint/:id')
+  mintNft(@Request() req, @Body() requestData: MintNftDto, @Param('id') id: string) {
+    return this.nftsService.mintNft(id, requestData);
   }
 }

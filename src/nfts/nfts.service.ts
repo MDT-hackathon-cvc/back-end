@@ -28,6 +28,7 @@ import { ApiError } from 'src/common/api';
 import { CounterName } from 'src/schemas/Counter.schema';
 import { IpfsClientType } from 'src/providers/ipfs/ipfs.type';
 import { IpfsGateway } from 'src/providers/ipfs/ipfs.gateway';
+import { MintNftDto } from './dto/user/mint-nft.dto';
 
 @Injectable()
 export class NftsService {
@@ -155,7 +156,6 @@ export class NftsService {
           description: 1,
           noOfShare: 1,
           numberOfItem: '$token.totalMinted',
-          isNFTBlack: 1,
           cid: '$token.cid',
         },
       },
@@ -180,7 +180,6 @@ export class NftsService {
           name: '$nft.name',
           description: '$nft.description',
           noOfShare: '$nft.noOfShare',
-          isNFTBlack: '$nft.isNFTBlack',
           cid: '$nft.token.cid',
           totalSupply: '$nft.token.totalSupply',
         },
@@ -200,9 +199,7 @@ export class NftsService {
   async findAll(requestData: FindNftAdminDto) {
     const pipe: mongoose.PipelineStage[] = [];
     const conditionMatch: any = [{ isDeleted: false }];
-    if (requestData?.isWithoutBlack === NftType.WITHOUT_BLACK) {
-      conditionMatch.push({ isNFTBlack: false });
-    }
+  
     pipe.push(
       { $match: { $and: conditionMatch } },
       {
@@ -213,23 +210,16 @@ export class NftsService {
           totalSupply: '$token.totalSupply',
           totalMinted: '$token.totalMinted',
           onSaleQuantity: {
-            $cond: [
-              '$isNFTBlack',
-              0,
+            $subtract: [
+              '$token.totalSupply',
               {
-                $subtract: [
-                  '$token.totalSupply',
-                  {
-                    $add: ['$token.totalAvailable', '$token.totalMinted'],
-                  },
-                ],
+                $add: ['$token.totalAvailable', '$token.totalMinted'],
               },
             ],
           },
           noOfShare: 1,
           status: 1,
           createdAt: 1,
-          isNFTBlack: 1,
           description: 1,
         },
       },
@@ -412,19 +402,7 @@ export class NftsService {
           $and: condition,
         },
       },
-      {
-        $set: {
-          redemptionValue: {
-            $cond: [
-              { $eq: ['$nft.isNFTBlack', true] },
-              redemptionValueBlackDiamond,
-              {
-                $multiply: ['$mintedValue', percentRedemptionValue],
-              },
-            ],
-          },
-        },
-      },
+
       {
         $project: {
           _id: '$_id',
@@ -549,5 +527,15 @@ export class NftsService {
     return {
       link
     }
+  }
+
+  async mintNft(id: string, {totalSupply, tokenId}: MintNftDto) {
+    return this.nftModel.findByIdAndUpdate({_id: id}, {
+      'token.totalSupply': totalSupply,
+      'token.ids': tokenId
+    },
+    {
+      new: true,
+    })
   }
 }

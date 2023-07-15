@@ -95,16 +95,6 @@ export class Owner {
   lastLockDate: Date;
 }
 
-export class HistorySupply {
-  @Prop({ type: Number })
-  oldTotalSupply: number;
-
-  @Prop({ type: Number })
-  newTotalSupply: number;
-
-  @Prop({ type: Date })
-  date: Date;
-}
 
 // @Schema()
 export class SimpleToken {
@@ -127,31 +117,28 @@ export class Token extends SimpleToken {
   address: string;
 
   @Prop()
-  ids: string[];
+  ids: number;
 
-  // @Prop()
-  // cid: string;
+  @Prop()
+  cid: string;
 
   @Prop()
   cidMedia: string;
 
-  // @Prop({ type: TokenStandard })
-  // standard: TokenStandard;
+  @Prop({ type: TokenStandard })
+  standard: TokenStandard;
 
-  // @Prop()
-  // totalSupply: number;
+  @Prop()
+  totalSupply: number;
 
-  // @Prop()
-  // totalMinted: number;
+  @Prop()
+  totalMinted: number;
 
   @Prop()
   totalAvailable: number;
 
   @Prop({ type: Number, default: 0 })
   totalBurnt: number;
-
-  @Prop({ type: HistorySupply })
-  historySupply: HistorySupply[];
 }
 
 export class SimpleNFT {
@@ -181,9 +168,6 @@ export class SimpleNFT {
 
   @Prop()
   noOfShare: number;
-
-  @Prop()
-  isNFTBlack: boolean;
 }
 
 @Schema({
@@ -228,9 +212,6 @@ export class NFT {
 
   @Prop()
   noOfShare: number;
-
-  @Prop({ default: false })
-  isNFTBlack: boolean;
 
   @Prop()
   ipfsImage: string;

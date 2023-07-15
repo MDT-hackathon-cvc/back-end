@@ -2,24 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { TokenStandard } from 'src/schemas/NFT.schema';
 import {
   IsString,
-  IsInt,
   IsNumber,
-  IsBoolean,
-  IsObject,
-  IsEnum,
-  IsOptional,
-  validate,
-  validateSync,
-  Validate,
-  ValidateIf,
-  isObject,
-  ValidateNested,
-  Max,
   IsArray,
-  isString,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
-import { CreateSaleOrderDto } from './create-sale-order.dto';
+import { Type } from 'class-transformer';
+
 
 class Token {
   standard: TokenStandard;
@@ -50,10 +37,12 @@ export class CreateNftDto {
   description: string;
 
   @ApiProperty({
-    default: {
-      trait_type: 'Base',
-      value: 'Starfish',
-    },
+    default: [
+      {
+        trait_type: 'Base',
+        value: 'Starfish',
+      },
+    ]
   })
   @IsArray()
   attributes: [Ettributes];

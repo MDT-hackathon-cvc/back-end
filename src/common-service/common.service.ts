@@ -169,184 +169,8 @@ export class CommonService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    // await this.initIpfsQueue();
-    // await this.initTransactionProcessingQueue();
-    // await this.initKycQueue();
+
   }
-
-  // async initIpfsQueue() {
-  //   this.ipfsQueue.process(async (job) => {
-  //     try {
-  //       const ipfsGateway = new IpfsGateway();
-  //       const nftId = job.data;
-  //       const nft = await this.nftModel.findById(nftId);
-  //       if (nft?.isDeleted) {
-  //         return;
-  //       }
-
-  //       this.logger.log(`initIpfsQueue(): Uploading IPFS for NFT ID ${nft.id}`);
-  //       const updateCid = {};
-  //       if (!nft.token.cid) {
-  //         this.logger.debug(`nft.image.url`, nft.image.url);
-  //         const cid = await ipfsGateway.uploadFromURL(
-  //           nft.image.url,
-  //           nft.image.mimeType,
-  //         );
-  //         updateCid['token.cid'] = cid;
-  //       }
-  //       if (nft.media && nft.media.url && !nft.token.cidMedia) {
-  //         this.logger.debug(`nft.media.url`, nft.media.url);
-  //         const cid = await ipfsGateway.uploadFromURL(
-  //           nft.media.url,
-  //           nft.media.mimeType,
-  //         );
-  //         updateCid['token.cidMedia'] = cid;
-  //       }
-  //       await nft.updateOne({
-  //         $set: {
-  //           ...updateCid,
-  //         },
-  //       });
-  //       return updateCid;
-  //     } catch (error) {
-  //       return Promise.reject(error);
-  //     }
-  //   });
-  //   this.ipfsQueue.on('succeeded', (job, result) => {
-  //     // prettier-ignore
-  //     this.logger.log(`initIpfsQueue(): Upload IPFS for NFT ID ${job.id} succeeded. Cid = ${JSON.stringify(result)}`);
-  //   });
-  //   this.ipfsQueue.on('failed', (job, err) => {
-  //     this.logger.error(
-  //       `initIpfsQueue(): Upload IPFS for NFT ID ${job.id} failed: ${err.message}`,
-  //     );
-  //     this.logError(err);
-  //   });
-
-  //   // Init data when restart server
-  //   const nfts = await this.nftModel.find({
-  //     $and: [
-  //       {
-  //         isDeleted: false,
-  //       },
-  //       {
-  //         $or: [{ 'token.cid': { $exists: false } }, { 'token.cid': '' }],
-  //       },
-  //     ],
-  //   });
-  //   for (let index = 0; index < nfts.length; index++) {
-  //     const nft = nfts[index];
-  //     const currentJob = await this.ipfsQueue.getJob(nft._id.toString());
-  //     if (currentJob) {
-  //       await currentJob.remove();
-  //     }
-  //     this.logger.log(
-  //       `initIpfsQueue(): Add Job Upload IPFS for NFT ID ${nft._id.toString()}`,
-  //     );
-  //     await this.addQueueUploadIpfs(nft._id.toString());
-  //   }
-  // }
-
-  // async initTransactionProcessingQueue() {
-  //   this.transactionProcessingQueue.process(async (job) => {
-  //     try {
-  //       const transactionId = job.data;
-  //       const transaction = await this.transactionModel.findById(transactionId);
-  //       this.logger.log(
-  //         `Checking transaction ${transaction.id}, hash = ${transaction.hash}`,
-  //       );
-  //       if (transaction.status !== TransactionStatus.PROCESSING) {
-  //         this.logger.debug(
-  //           `Transaction ${transaction.hash} is not in processing status. Current status = ${transaction.status}`,
-  //         );
-  //         return;
-  //       }
-
-  //       const session = await this.connection.startSession();
-  //       await session.withTransaction(async () => {
-  //         const web3Gateway = new Web3Gateway();
-  //         const transactionReceipt = await web3Gateway.getTransactionReceipt(
-  //           transaction.hash,
-  //         );
-  //         if (!transactionReceipt) {
-  //           return Promise.reject(
-  //             new Error(
-  //               `Can't get transaction receipt for hash ${transaction.hash}`,
-  //             ),
-  //           );
-  //         }
-  //         if (!transactionReceipt.status) {
-  //           const promisesUpdate = [];
-  //           transaction.status = TransactionStatus.FAILED;
-  //           promisesUpdate.push(transaction.save({ session }));
-  //           const results = await Promise.all(promisesUpdate);
-  //           this.logPromise(promisesUpdate, results);
-  //         } else {
-  //           this.logger.debug(
-  //             `Transaction ${transaction.hash} has been successful`,
-  //           );
-  //         }
-  //       });
-  //       session.endSession();
-  //     } catch (error) {
-  //       return Promise.reject(error);
-  //     }
-  //   });
-  //   this.transactionProcessingQueue.on('succeeded', (job, result) => {
-  //     // prettier-ignore
-  //     this.logger.log(`Check transaction ${job.id} succeeded.`);
-  //   });
-  //   this.transactionProcessingQueue.on('failed', async (job, err) => {
-  //     this.logger.error(`Check transaction ${job.id} failed: ${err.message}`);
-  //     const trans = await this.transactionModel.findById(job.id);
-  //     if (!trans) {
-  //       await job.remove();
-  //     }
-
-  //     this.logError(err);
-  //   });
-
-  //   // Init data when restart server
-  //   const transactions = await this.transactionModel.find({
-  //     type: TransactionType.TRANSFER,
-  //     status: TransactionStatus.PROCESSING,
-  //   });
-  //   for (let index = 0; index < transactions.length; index++) {
-  //     const transaction = transactions[index];
-  //     const currentJob = await this.transactionProcessingQueue.getJob(
-  //       transaction.id,
-  //     );
-  //     if (currentJob) {
-  //       await currentJob.remove();
-  //     }
-  //     await this.addQueueCheckTransaction(transaction);
-  //   }
-  // }
-
-  async clearQueueUploadIpfs(id: string) {
-    this.logger.log(`clearQueueUploadIpfs(): Clear Queue Upload IPFS ${id}`);
-    const currentJob = await this.ipfsQueue.getJob(id);
-    if (currentJob) {
-      await currentJob.remove();
-    }
-  }
-
-  // async addQueueUploadIpfs(id: string) {
-  //   this.logger.log(
-  //     `addQueueUploadIpfs(): Add Queue Upload IPFS for NFT ${id}`,
-  //   );
-  //   const currentJob = await this.ipfsQueue.getJob(id);
-  //   if (currentJob) {
-  //     return;
-  //   }
-  //   const job = this.ipfsQueue
-  //     .createJob(id)
-  //     .setId(id)
-  //     .retries(100000000000000000000)
-  //     .backoff('fixed', 5000)
-  //     .delayUntil(moment().add(30, 'second').toDate());
-  //   await job.save();
-  // }
 
   async clearQueueCheckTransaction(id: string) {
     this.logger.log(`Clear Queue Check Transaction ${id}`);
@@ -567,12 +391,6 @@ export class CommonService implements OnModuleInit {
       address: config.signer.address,
       privateKey,
     };
-  }
-
-  async findCommissionRatio() {
-    const config = await this.findFullConfig();
-    const percentCommissionRatio = config.percentCommissionRatio || 800;
-    return percentCommissionRatio;
   }
 
   async findNextIndex(name: string, step = 1) {
@@ -1497,18 +1315,7 @@ export class CommonService implements OnModuleInit {
             session,
           });
           // update user info when admin mints Black NFT to one
-          if (nft.isNFTBlack) {
-            await this.userModel.findOneAndUpdate(
-              { address: transaction.toAddress },
-              {
-                haveReceivedBlackFromAdmin: true,
-              },
-              {
-                session: session,
-                new: true,
-              },
-            );
-          }
+
         });
         await session.endSession();
         // push noti
@@ -1538,22 +1345,7 @@ export class CommonService implements OnModuleInit {
         // Transaction
         promises.push(transaction.save({ session }));
         // Update NFT: status, token id, total supply, total minted
-        switch (nft.isNFTBlack) {
-          case false:
-            await this.updateNFT({
-              transaction,
-              nft,
-              session,
-            });
-            await this.updateTransporter({
-              fromAddress,
-              actionType: ActionType.TRANSFER_NFT,
-              transaction,
-              session,
-            });
-            await this.updateReceiverNFT({ transaction, nft, session });
-            break;
-        }
+       
       } catch (error) {
         await Promise.all(promises);
         throw error;
@@ -2110,7 +1902,6 @@ export class CommonService implements OnModuleInit {
       royaltyFee: nft.royaltyFee,
       description: nft.description,
       noOfShare: nft.noOfShare,
-      isNFTBlack: nft.isNFTBlack,
     };
     return simpleNFT;
   }
@@ -2306,94 +2097,6 @@ export class CommonService implements OnModuleInit {
       throw ApiError(ErrorCode.INVALID_DATA, 'Cannot found token!');
     }
     return result;
-  }
-
-
-  async getDataSignature(data: {
-    referrer: string;
-    signer: {
-      address: string;
-      privateKey: any;
-    };
-    nft: NFTDocument;
-    quantityForSale: number;
-    price: BigNumber;
-    quantity: number;
-    transactionId: any;
-    event: EventDocument;
-    toAddress: string;
-    bdaOfBuyer: string;
-    currencyAddress: string;
-  }) {
-    const {
-      referrer,
-      signer,
-      nft,
-      quantityForSale,
-      price,
-      quantity,
-      transactionId,
-      event,
-      toAddress,
-      bdaOfBuyer,
-      currencyAddress,
-    } = data;
-    const web3Gateway = new Web3Gateway();
-    const commissionRatio = referrer
-      ? await this.findCommissionRatio()
-      : DEFAULT_COMMISSION_RATIO;
-    const referrerAddress = referrer ? referrer : DEFAULT_REFERRER;
-    const bdaAddress = bdaOfBuyer ? bdaOfBuyer : DEFAULT_BDA;
-    const dataSign = [
-      nft.token.totalSupply + nft.token.totalBurnt,
-      quantityForSale,
-      price,
-      quantity,
-      commissionRatio,
-      toAddress,
-      process.env.ADMIN_WALLET_ADDRESS,
-      currencyAddress,
-      process.env.CONTRACT_ERC_721,
-      referrerAddress,
-      bdaAddress,
-      Utils.convertToBytes(nft.id),
-      Utils.convertToBytes(transactionId.toString()),
-      event.signature?.hash,
-      `${process.env.BASE_URI}${nft.id}`,
-    ];
-    const signatureMint = await web3Gateway.sign(dataSign, signer.privateKey);
-    const signature = <TransactionSignature>{
-      data: dataSign,
-      address: signer.address,
-      hash: signatureMint,
-      dataRequest: [
-        [
-          nft.token.totalSupply + nft.token.totalBurnt,
-          quantityForSale, // total put on sale  --> total supply in event
-          price, // price
-          quantity, // amount
-          Utils.convertDateToSeconds(event.startDate),
-          Utils.convertDateToSeconds(event.endDate),
-          commissionRatio,
-        ],
-        [
-          event.creatorAddress, // seller
-          currencyAddress, // payment Token
-          process.env.CONTRACT_ERC_721,
-          process.env.ADMIN_WALLET_ADDRESS,
-          referrerAddress, // referrer
-          bdaAddress, // bda
-        ],
-        [
-          Utils.convertToBytes(nft.id), // nft id
-          Utils.convertToBytes(event.id), // transaction id (put on sale)  // TODO: change to eventId
-          Utils.convertToBytes(transactionId.toString()), // transaction id (mint)
-        ],
-        [event.signature?.hash, signatureMint], // (0) saleOrderSignature, (1) signatureMint
-        [`${process.env.BASE_URI}${nft.id}`],
-      ],
-    };
-    return signature;
   }
 
   async getRecoverDataSignature(data: {
@@ -2699,11 +2402,6 @@ export class CommonService implements OnModuleInit {
       .backoff('fixed', 5000);
     await job.save();
   }
-
-
-
-  
-
 
   checkEndEventBuy(event: EventDocument) {
     const totalNftForSale = event.categories.reduce(

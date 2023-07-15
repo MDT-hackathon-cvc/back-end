@@ -57,14 +57,6 @@ export class AppController {
     return this.appService.clearCache();
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth()
-  // @Roles(UserRole.ADMIN)
-  @Post('/clear-queue')
-  clearQueue(@Body() requestData: any) {
-    return this.appService.clearQueue(requestData);
-  }
-
   @Post('/kyc')
   webhookKyc(@Body() requestData: any) {
     return this.appService.checkKyc(requestData);

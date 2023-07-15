@@ -51,14 +51,6 @@ export class AppService {
     return this.commonService.clearCache();
   }
 
-  clearQueue(requestData: any) {
-    if (requestData.type === QUEUE.UPLOAD_IPFS) {
-      return this.commonService.clearQueueUploadIpfs(requestData.id);
-    } else if (requestData.type === QUEUE.TRANSACTION_PROCESSING) {
-      return this.commonService.clearQueueCheckTransaction(requestData.id);
-    }
-  }
-
   checkKyc(data: any) {
     console.log(data);
   }

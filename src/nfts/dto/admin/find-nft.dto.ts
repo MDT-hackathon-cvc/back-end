@@ -19,17 +19,5 @@ export class FindNftDto extends PartialType(SearchDto) {
   @ApiProperty()
   @IsOptional()
   @IsEnum(NFTStatus)
-  status: NFTStatus;
-
-  @ApiProperty()
-  @IsOptional()
-  @Type(() => Number)
-  @IsEnum(NftType)
-  isWithoutBlack: number;
-
-  @ApiProperty()
-  @IsOptional()
-  @Type(() => Number)
-  @IsEnum(OnSaleStatus)
-  ableToSale: number;
+  status: string;
 }

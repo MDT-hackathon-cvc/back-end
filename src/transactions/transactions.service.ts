@@ -181,7 +181,6 @@ export class TransactionsService {
       bdaOfBuyer: bdaOfBuyer,
       currencyAddress: currency.address,
     };
-    const signature = await this.commonService.getDataSignature(data);
 
     return this.transactionModel.create({
       _id: transactionId,
@@ -191,7 +190,7 @@ export class TransactionsService {
       toAddress: user.address,
       quantity: requestData.quantity,
       status: TransactionStatus.DRAFT,
-      signature: signature,
+      signature: null,
       event: this.commonService.convertToSimpleEvent(event, categogyInEvent),
       revenue: revenueConvert,
       revenueUsd: revenueUsd,

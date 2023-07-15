@@ -83,21 +83,9 @@ export class NftsAdminService {
       isDeleted: false,
     });
     // Search by status
-    if (requestData.status) {
-      conditionAnd.push({ status: requestData.status });
-    }
-
-    if (requestData.isWithoutBlack === NftType.WITHOUT_BLACK) {
-      conditionAnd.push({ isNFTBlack: false });
-    }
-
-    if (requestData.isWithoutBlack === NftType.ONLY_BLACK) {
-      conditionAnd.push({ isNFTBlack: true });
-    }
-
-    if (requestData.ableToSale === OnSaleStatus.ABLE) {
-      conditionAnd.push({ 'token.totalAvailable': { $gt: 0 } });
-    }
+    // if (requestData.status) {
+    //   conditionAnd.push({ status: requestData.status });
+    // }
 
     const pipe: mongoose.PipelineStage[] = [
       {
@@ -114,16 +102,10 @@ export class NftsAdminService {
           totalMinted: '$token.totalMinted',
           totalAvailable: '$token.totalAvailable',
           onSaleQuantity: {
-            $cond: [
-              '$isNFTBlack',
-              0,
+            $subtract: [
+              '$token.totalSupply',
               {
-                $subtract: [
-                  '$token.totalSupply',
-                  {
-                    $add: ['$token.totalAvailable', '$token.totalMinted'],
-                  },
-                ],
+                $add: ['$token.totalAvailable', '$token.totalMinted'],
               },
             ],
           },
@@ -131,7 +113,6 @@ export class NftsAdminService {
           status: 1,
           createdAt: 1,
           totalBurned: '$token.totalBurnt',
-          isNFTBlack: 1,
         },
       },
     ];
@@ -153,16 +134,10 @@ export class NftsAdminService {
       {
         $set: {
           onSaleQuantity: {
-            $cond: [
-              '$isNFTBlack',
-              0,
+            $subtract: [
+              '$token.totalSupply',
               {
-                $subtract: [
-                  '$token.totalSupply',
-                  {
-                    $add: ['$token.totalAvailable', '$token.totalMinted'],
-                  },
-                ],
+                $add: ['$token.totalAvailable', '$token.totalMinted'],
               },
             ],
           },
@@ -284,13 +259,7 @@ export class NftsAdminService {
     }
     update['token.totalSupply'] = newTotalSupply;
     update['$inc'] = { 'token.totalAvailable': +supplyQuantity };
-    update['$push'] = {
-      'token.historySupply': {
-        oldTotalSupply: nft.token.totalSupply,
-        newTotalSupply: newTotalSupply,
-        date: new Date(),
-      },
-    };
+
     await this.nftModel.updateOne({ _id: id }, update);
 
     return true;
