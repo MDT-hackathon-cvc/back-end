@@ -23,7 +23,7 @@ import { EventSchema, Event } from './schemas/Event.schema';
   imports: [
     ScheduleModule.forRoot(),
     CacheModule.register<RedisClientOptions>({
-      store: redisStore,
+      // store: redisStore,
       socket: {
         host: process.env.REDIS_HOST,
         port: Number(process.env.PORT),

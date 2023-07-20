@@ -155,7 +155,6 @@ export class NftsService {
           name: 1,
           description: 1,
           noOfShare: 1,
-          numberOfItem: '$token.totalMinted',
           cid: '$token.cid',
         },
       },
@@ -169,30 +168,25 @@ export class NftsService {
     const pipeLine = [
       {
         $match: {
-          nftId: Utils.toObjectId(id),
-          address: Utils.formatAddress(address),
-          status: { $in: [OwnerStatus.INVALID, OwnerStatus.UNLOCKED] },
+          _id: Utils.toObjectId(id),
         },
       },
       {
-        $project: {
-          image: '$nft.image',
-          name: '$nft.name',
-          description: '$nft.description',
-          noOfShare: '$nft.noOfShare',
-          cid: '$nft.token.cid',
-          totalSupply: '$nft.token.totalSupply',
+        $set: {
+          onSaleQuantity: {
+            $subtract: [
+              '$token.totalSupply',
+              {
+                $add: ['$token.totalAvailable', '$token.totalMinted'],
+              },
+            ],
+          },
+          totalBurned: { $sum: '$token.totalBurnt' },
         },
       },
     ];
 
-    const result = await Utils.aggregatePaginate(
-      this.ownerModel,
-      pipeLine,
-      null,
-    );
-
-    result.docs[0].numberOfItem = result.docs?.length || 0;
+    const result = await Utils.aggregatePaginate(this.nftModel, pipeLine, null);
     return result;
   }
 
@@ -217,10 +211,11 @@ export class NftsService {
               },
             ],
           },
-          noOfShare: 1,
           status: 1,
           createdAt: 1,
           description: 1,
+          ipfsImage: 1,
+          ipfsMetadata: 1
         },
       },
     );

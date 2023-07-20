@@ -124,7 +124,6 @@ export enum ActionType {
 @Injectable()
 export class CommonService implements OnModuleInit {
   private readonly logger = new Logger(CommonService.name);
-  private readonly ipfsQueue = new Queue(QUEUE.UPLOAD_IPFS, QUEUE_SETTINGS);
 
   constructor(
     @InjectConnection() private readonly connection: mongoose.Connection,

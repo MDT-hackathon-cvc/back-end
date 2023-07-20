@@ -43,26 +43,13 @@ export class NftsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
   @ApiBearerAuth()
-  @Get('/tokens-can-redeem')
-  async findListTokenCanRedeem(
-    @Query() requestData: FindTokensCanRedeemDto,
-    @Request() req,
-  ) {
-    return this.nftsService.findListTokenCanRedeem(
-      req.user.address,
-      requestData,
-    );
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.USER)
-  @ApiBearerAuth()
   @Get('owner')
   async findOwnerNft(@Request() req) {
     return this.nftsService.findOwnerNft(req.user.address);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
   @Roles(UserRole.USER)
   @Get(':id')
   async findOne(@Request() req, @Param('id') id: string) {
