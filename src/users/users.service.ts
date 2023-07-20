@@ -839,16 +839,7 @@ export class UsersService {
         break;
     }
     await user.save();
-    if (dataKyc.status === StatusKyc.APPROVED) {
-      this.commonService.addQueueKyc(user);
-      await this.commonService.pushNotificationUser(NotificationType.N1, {
-        toAddress: user.address,
-      });
-    } else if (dataKyc.status === StatusKyc.REJECTED) {
-      await this.commonService.pushNotificationUser(NotificationType.N2, {
-        toAddress: user.address,
-      });
-    }
+    
     return user;
   }
 

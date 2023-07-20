@@ -568,8 +568,6 @@ export class TransactionsService {
       }
     });
 
-    // Add queue
-    this.commonService.addQueueCheckTransaction(transaction);
   }
 
   async getTotalMinter() {

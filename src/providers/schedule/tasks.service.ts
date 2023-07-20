@@ -69,26 +69,4 @@ export class TasksService {
     await config.save();
   }
 
-  @Cron(EVERY_2_MINUTES)
-  async pushNotificationMintingEventDaft() {
-    const mintingEvents = await this.eventModel.find({
-      status: EventStatus.DRAFT,
-      startDate: {
-        $lte: new Date(),
-      },
-    });
-    for (const event of mintingEvents) {
-      const notification = await this.notificationModel.findOne({
-        type: NotificationType.P6,
-        'mintingEvent.id': event._id,
-      });
-      if (!notification) {
-        await this.commonService.pushNotificationAdmin(NotificationType.P6, {
-          mintingEvent: event,
-        });
-      }
-    }
-  }
-
-
 }

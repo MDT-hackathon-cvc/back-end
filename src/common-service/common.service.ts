@@ -125,12 +125,6 @@ export enum ActionType {
 export class CommonService implements OnModuleInit {
   private readonly logger = new Logger(CommonService.name);
   private readonly ipfsQueue = new Queue(QUEUE.UPLOAD_IPFS, QUEUE_SETTINGS);
-  private readonly transactionProcessingQueue = new Queue(
-    QUEUE.TRANSACTION_PROCESSING,
-    QUEUE_SETTINGS,
-  );
-
-  private readonly kycQueue = new Queue(QUEUE.KYC, QUEUE_SETTINGS);
 
   constructor(
     @InjectConnection() private readonly connection: mongoose.Connection,
@@ -170,35 +164,6 @@ export class CommonService implements OnModuleInit {
 
   async onModuleInit() {
 
-  }
-
-  async clearQueueCheckTransaction(id: string) {
-    this.logger.log(`Clear Queue Check Transaction ${id}`);
-    const currentJob = await this.transactionProcessingQueue.getJob(id);
-    if (currentJob) {
-      await currentJob.remove();
-    }
-  }
-
-  async addQueueCheckTransaction(transaction: TransactionDocument) {
-    if (!Utils.isValidateHash(transaction.hash)) {
-      this.logger.error(`Transaction ${transaction.hash} is not valid`);
-      return;
-    }
-    this.logger.log(`Add Queue Check Transaction ${transaction.hash}`);
-    const currentJob = await this.transactionProcessingQueue.getJob(
-      transaction.id,
-    );
-    if (currentJob) {
-      return;
-    }
-    const job = this.transactionProcessingQueue
-      .createJob(transaction.id)
-      .setId(transaction.id)
-      .delayUntil(moment().add(2, 'm').toDate())
-      .retries(100000000000000000000)
-      .backoff('fixed', 5000);
-    await job.save();
   }
 
   async clearCacheNFT(transaction: TransactionDocument) {
@@ -2259,149 +2224,6 @@ export class CommonService implements OnModuleInit {
     }
   }
 
-  // add queue for kyc job.
-  async initKycQueue() {
-    console.log('init kyc queue');
-    this.kycQueue.process(async (job) => {
-      try {
-        // console.log('start to process with job: ', job);
-        const id = job.data;
-        const user = await this.userModel.findOne({
-          address: id,
-          'kycInfo.kycStatus': KYCStatus.VERIFIED,
-          $or: [
-            { 'kycInfo.kycPhotos.selfieUrl': '' },
-            { 'kycInfo.kycPhotos.documentUrl': '' },
-          ],
-        });
-        // TODO:
-        if (user) {
-          console.log(`process with user: ${user._id}, ${user.address}`);
-          // find single candiate with refId.
-          const userInform = await this.singleCandidateKyc(
-            process.env.CLIENT_ID,
-            id,
-            process.env.API_KEY,
-          );
-          if (userInform) {
-            const countryCode = userInform.identities
-              .national_id_issuing_country?.value
-              ? userInform.identities.national_id_issuing_country.value
-              : userInform.identities.driving_license_issuing_country?.value
-              ? userInform.identities.driving_license_issuing_country.value
-              : userInform.identities.passport_issuing_country?.value
-              ? userInform.identities.passport_issuing_country.value : ''; // Thiếu với trường hợp passport
-
-            // (user.kycInfo.email = userInform.identities?.email?.value);
-            user.kycInfo.email = userInform.identities?.email?.value;
-            user.kycInfo.fullName = `${userInform.identities?.family_name?.value} ${userInform.identities?.given_name?.value}`;
-            user.kycInfo.residentialAddress =
-              userInform.identities?.address?.value;
-            user.kycInfo.countryCode = countryCode;
-            user.kycInfo.nationality = countries[countryCode]?.name;
-            user.kycInfo.dateOfBirth = new Date(
-              userInform.identities?.dob?.value,
-            );
-            const kycDocument = userInform.identities?.national_id_number?.value
-              ? userInform.identities.national_id_number.value
-              : userInform.identities?.driving_license_number?.value
-              ? userInform.identities.driving_license_number.value
-              : userInform.identities?.passport_number.value;
-            user.kycInfo.kycDocument = kycDocument;
-            user.save();
-            if (userInform.identities?.selfie?.value) {
-              const buf = Buffer.from(
-                userInform.identities?.selfie?.value,
-                'base64',
-              );
-              const urlSelfie = await AwsUtils.uploadS3(
-                buf,
-                'image/jpeg',
-                `kyc/selfie/${id}`,
-                true,
-              );
-              user.kycInfo.kycPhotos.selfieUrl = urlSelfie;
-            }
-
-            const documentBase64 = userInform.identities?.national_id?.value
-              ? userInform.identities.national_id.value
-              : userInform.identities?.driving_license?.value
-              ? userInform.identities.driving_license.value
-              : userInform.identities?.passport.value;
-            if (documentBase64) {
-              const bufDoc = Buffer.from(documentBase64, 'base64');
-              const urlDoc = await AwsUtils.uploadS3(
-                bufDoc,
-                'image/jpeg',
-                `kyc/Document/${id}`,
-                true,
-              );
-              user.kycInfo.kycPhotos.documentUrl = urlDoc;
-            }
-            if (userInform.identities?.selfie?.value || documentBase64) {
-              user.save();
-            }
-          }
-        }
-      } catch (error) {
-        return Promise.reject(error);
-      }
-    });
-    this.kycQueue.on('succeeded', (job, result) => {
-      // prettier-ignore
-      this.logger.log(`Check kyc ${job.id} succeeded.`);
-    });
-    this.kycQueue.on('failed', async (job, err) => {
-      console.log('job id: ', job.id);
-      const dateTime = new Date();
-      dateTime.setDate(dateTime.getDate() - 1);
-      const userJob = await this.userModel
-        .findOne({
-          address: { $regex: job.id, $options: 'i' },
-          createdAt: { $gt: new Date(dateTime) },
-        })
-        .lean();
-      if (!userJob) {
-        await job.remove();
-      }
-      this.logger.error(`Check kyc ${job.id} failed: ${err.message}`);
-      this.logError(err);
-    });
-
-    // Init data when restart server
-    const users = await this.userModel.find({
-      'kycInfo.kycStatus': KYCStatus.VERIFIED,
-      $or: [
-        { 'kycInfo.kycPhotos.selfieUrl': '' },
-        { 'kycInfo.kycPhotos.documentUrl': '' },
-      ],
-    });
-    console.log('number of user already verified: ', users?.length);
-    for (let index = 0; index < users.length; index++) {
-      const user = users[index];
-      const currentJob = await this.kycQueue.getJob(user.address);
-      if (currentJob) {
-        await currentJob.remove();
-      }
-      await this.addQueueKyc(user);
-    }
-  }
-  async addQueueKyc(user: UserDocument) {
-    console.log(`Add Queue Check kyc for userId: ${user.address}`);
-    this.logger.log(`Add Queue Check kyc for userId: ${user.address}`);
-    const currentJob = await this.kycQueue.getJob(user.address);
-    if (currentJob) {
-      return;
-    }
-    console.log('user inform: ', JSON.stringify(user));
-    const job = this.kycQueue
-      .createJob(user.address)
-      .setId(user.address)
-      .delayUntil(moment().add(2, 'm').toDate())
-      .retries(100000000000000000000)
-      .backoff('fixed', 5000);
-    await job.save();
-  }
 
   checkEndEventBuy(event: EventDocument) {
     const totalNftForSale = event.categories.reduce(
