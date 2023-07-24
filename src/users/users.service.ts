@@ -34,7 +34,6 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { EventKYC, StatusKyc } from 'src/users/dto/kyc-user.dto';
 import { Owner, OwnerDocument } from 'src/schemas/Owner.schema';
 import { SearchAdminDto } from './dto/search-admin.dto';
-const countries = require('../resource/country-key-value.json');
 @Injectable()
 export class UsersService {
   constructor(

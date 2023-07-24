@@ -115,7 +115,6 @@ import {
 import { PushNotificationDto } from 'src/notifications/dto/push-notification.dto';
 import { UserJWT } from 'src/auth/role.enum';
 
-const countries = require('../resource/country-key-value.json');
 
 export enum ActionType {
   REDEMPTION = 1,
