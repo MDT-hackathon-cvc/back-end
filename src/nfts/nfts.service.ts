@@ -1,6 +1,6 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model } from 'mongoose';
+import mongoose, { Model, Promise } from 'mongoose';
 import { UserJWT } from 'src/auth/role.enum';
 import { CommonService } from 'src/common-service/common.service';
 import { ErrorCode, THREE_MINUTES } from 'src/common/constants';
@@ -193,7 +193,7 @@ export class NftsService {
   async findAll(requestData: FindNftAdminDto) {
     const pipe: mongoose.PipelineStage[] = [];
     const conditionMatch: any = [{ isDeleted: false }];
-  
+
     pipe.push(
       { $match: { $and: conditionMatch } },
       {
@@ -215,7 +215,7 @@ export class NftsService {
           createdAt: 1,
           description: 1,
           ipfsImage: 1,
-          ipfsMetadata: 1
+          ipfsMetadata: 1,
         },
       },
     );
@@ -260,170 +260,7 @@ export class NftsService {
   }
 
   async findOwned(user: UserJWT, id: string, requestData: FindItemOwnerDto) {
-    const match: any = {
-      $and: [
-        { isDeleted: false },
-        {
-          'owners.address': user.address,
-          'owners.status': { $in: [OwnerStatus.UNLOCKED, OwnerStatus.INVALID] },
-        },
-      ],
-    };
-    const timeOfPreviousYear = new Date().getTime() - THREE_MINUTES;
-
-    if (requestData.keyword) {
-      match.$or = [
-        {
-          'owners.event.name': {
-            $regex: requestData.keyword,
-            $options: 'i',
-          },
-        },
-        {
-          'owners.tokenId': requestData.keyword,
-        },
-      ];
-    }
-
-    if (requestData?.fromMintDate) {
-      match.$and.push({
-        'owners.mintedDate': { $gte: new Date(requestData.fromMintDate) },
-      });
-    }
-
-    if (requestData?.toMintDate) {
-      match.$and.push({
-        'owners.mintedDate': { $lte: new Date(requestData.toMintDate) },
-      });
-    }
-
-    if (requestData?.redeemable) {
-      // need to check current date - 365 days > minted date
-      match.$and.push({
-        'owners.mintedDate': {
-          $lte: new Date(timeOfPreviousYear),
-        },
-      });
-    }
-    const pipe: mongoose.PipelineStage[] = [
-      {
-        $match: {
-          _id: Utils.toObjectId(id),
-        },
-      },
-      { $unset: ['owners'] },
-      {
-        $lookup: {
-          from: 'owners',
-          localField: '_id',
-          foreignField: 'nftId',
-          as: 'owners',
-        },
-      },
-      {
-        $unwind: '$owners',
-      },
-      {
-        $match: match,
-      },
-      {
-        $set: {
-          isRedeem: {
-            $lte: ['$owners.mintedDate', new Date(timeOfPreviousYear)],
-          },
-        },
-      },
-    ];
-
-    const result = await Utils.aggregatePaginate(
-      this.nftModel,
-      pipe,
-      requestData,
-    );
-    return result;
-  }
-
-  async findListTokenCanRedeem(
-    address: string,
-    requestDto: FindTokensCanRedeemDto,
-  ) {
-    const { keyword, nftIds, startDate, endDate } = requestDto;
-    const timeOfPreviousYear = new Date().getTime() - THREE_MINUTES;
-    const fullConfig = await this.commonService.findFullConfig();
-    const { percentRedemptionValue, redemptionValueBlackDiamond } = fullConfig;
-    // const condition: mongoose.FilterQuery<NFTDocument>[] = [
-    //   { 'address': address },
-    //   {
-    //     'mintedDate': {
-    //       $lte: new Date(timeOfPreviousYear),
-    //     },
-    //   },
-    // ];
-    const condition: mongoose.FilterQuery<NFTDocument>[] = [
-      { address: address, status: OwnerStatus.UNLOCKED },
-      // {
-      //   mintedDate: {
-      //     $lte: new Date(timeOfPreviousYear),
-      //   },
-      // },
-    ];
-    if (keyword) {
-      condition.push({ tokenId: keyword });
-    }
-    if (nftIds) {
-      condition.push({
-        nftId: {
-          $in: nftIds,
-        },
-      });
-    }
-    if (startDate) {
-      condition.push({
-        mintedDate: {
-          $gte: new Date(startDate),
-        },
-      });
-    }
-    if (endDate) {
-      condition.push({
-        mintedDate: {
-          $lte: new Date(endDate),
-        },
-      });
-    }
-    const pipeline = [
-      {
-        $match: {
-          $and: condition,
-        },
-      },
-
-      {
-        $project: {
-          _id: '$_id',
-          nftId: '$nftId',
-          name: '$nft.name',
-          description: '$nft.description',
-          image: '$nft.image',
-          noOfShare: '$nft.noOfShare',
-          owners: {
-            tokenId: '$tokenId',
-            mintedAddress: '$mintedAddress',
-            address: '$address',
-            event: '$event',
-            mintedDate: '$mintedDate',
-            mintedHash: '$mintedHash',
-            redemptionValue: '$redemptionValue',
-          },
-        },
-      },
-    ];
-    const result = await Utils.aggregatePaginate(
-      this.ownerModel,
-      pipeline,
-      requestDto,
-    );
-    return result;
+    return this.commonService.findOwned(user, id, requestData)
   }
 
   async findOwnerNft(address: string) {
@@ -431,35 +268,27 @@ export class NftsService {
       {
         $match: {
           address: address,
-          status: { $in: [OwnerStatus.UNLOCKED, OwnerStatus.INVALID] },
         },
       },
       {
-        $group: {
-          _id: {
-            _id: '$nftId',
-            name: '$nft.name',
-            image: '$nft.image',
-            noOfShare: '$nft.noOfShare',
-          },
-          totalItem: {
-            $sum: 1,
-          },
-          lastDateBought: {
-            $max: '$createdAt',
-          },
+        $lookup: {
+          from: 'nfts',
+          localField: 'nftId',
+          foreignField: '_id',
+          as: 'nfts',
         },
       },
-      {
-        $project: {
-          _id: '$_id._id',
-          name: '$_id.name',
-          image: '$_id.image',
-          noOfShare: '$_id.noOfShare',
-          totalItem: '$totalItem',
-          lastDateBought: '$lastDateBought',
-        },
-      },
+      { $unwind: '$nfts'},
+      // {
+      //   $project: {
+      //     _id: '$nfts._id',
+      //     name: '$nfts.name',
+      //     ipfsImage: '$nfts.ipfsImage',
+      //     // totalItem: '$totalItem',
+      //     // lastDateBought: '$lastDateBought',
+      //     status: '$nfts.status'
+      //   },
+      // },
     ];
     const [result, summary] = await Promise.all([
       Utils.aggregatePaginate(this.ownerModel, pipeline, {
@@ -469,17 +298,17 @@ export class NftsService {
       }),
       this.ownerModel.aggregate(pipeline),
     ]);
-    if (summary?.length > 0) {
-      const totalOwnerItem = summary.reduce((accumulator, currentValue) => {
-        return accumulator + currentValue.totalItem;
-      }, 0);
-      result.totalOwnerItem = totalOwnerItem;
-    }
+    // if (summary?.length > 0) {
+    //   const totalOwnerItem = summary.reduce((accumulator, currentValue) => {
+    //     return accumulator + currentValue.totalItem;
+    //   }, 0);
+    //   result.totalOwnerItem = totalOwnerItem;
+    // }
     return result;
   }
 
-  async create(requestData: CreateNftDto) {
-    const { name, description, attributes, ipfsUrl } = requestData
+  async create(requestData: CreateNftDto, address: string) {
+    const { name, description, attributes, ipfsUrl } = requestData;
     // Validate
     const nftCode = await this.commonService.findNextIndex(CounterName.NFT);
     const nftSlug = slugify(`${requestData.name}-${nftCode}`, { lower: true });
@@ -487,21 +316,30 @@ export class NftsService {
       name,
       description,
       image: ipfsUrl,
-      attributes
-    }
+      attributes,
+    };
     const { link } = await this.uploadMetadataToIpfs(metadata);
 
-    const createdNft = new this.nftModel(requestData);
-    createdNft.code = nftCode;
+    // const session = await this.connection.startSession();
+    let createdNft = null;
+    // await session.withTransaction(async () => {
+    console.log('============');
+    createdNft = new this.nftModel(requestData);
     createdNft.slug = nftSlug;
     createdNft.status = NFTStatus.OFF_SALE;
-    createdNft.ipfsImage = ipfsUrl
+    createdNft.ipfsImage = ipfsUrl;
     createdNft.name = name;
-    createdNft.description = description
-    createdNft.ipfsMetadata = link
+    createdNft.description = description;
+    createdNft.ipfsMetadata = link;
 
     await createdNft.save();
-    // await this.commonService.addQueueUploadIpfs(createdNft._id.toString());
+    const dataUpdateOwner = {
+      nft: createdNft,
+      address,
+    };
+    await this.commonService.updateOwnerAfterCreateNft(dataUpdateOwner);
+    // })
+    // await session.endSession();
     return createdNft;
   }
 
@@ -510,8 +348,8 @@ export class NftsService {
     console.log('ipfsGateway :>> ', ipfsGateway);
     const data = await ipfsGateway.upload(content);
     return {
-      image: data
-    }
+      image: data,
+    };
   }
 
   async uploadMetadataToIpfs(data: any) {
@@ -520,17 +358,35 @@ export class NftsService {
     const link = await ipfsGateway.uploadMetadataToIpfs(data);
     console.log('link :>> ', link);
     return {
-      link
-    }
+      link,
+    };
   }
 
-  async mintNft(id: string, {totalSupply, tokenId}: MintNftDto) {
-    return this.nftModel.findByIdAndUpdate({_id: id}, {
-      'token.totalSupply': totalSupply,
-      'token.ids': tokenId
-    },
-    {
-      new: true,
-    })
+  async mintNft(
+    id: string,
+    { totalSupply, hash }: MintNftDto,
+    address: string,
+  ) {
+    const data = {
+      nftId: id,
+      address,
+      hash,
+      totalSupply,
+    };
+    return Promise.all([
+      this.nftModel.findByIdAndUpdate(
+        { _id: id },
+        {
+          'token.totalSupply': totalSupply,
+          'token.ids': id,
+          status: NFTStatus.MINTED,
+          code: id
+        },
+        {
+          new: true,
+        },
+      ),
+      this.commonService.updateOwnerAfterMint(data),
+    ]);
   }
 }

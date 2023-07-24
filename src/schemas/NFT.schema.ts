@@ -16,6 +16,7 @@ export enum NFTStatus {
   OFF_SALE = 'off-sale',
   ON_SALE = 'on-sale',
   SOLD_OUT = 'sold-out',
+  MINTED = 'MINTED'
 }
 
 export enum OwnerStatus {
@@ -24,6 +25,8 @@ export enum OwnerStatus {
   BURNED = 'burned',
   REDEEMED = 'redeemed',
   INVALID = 'invalid',
+  UNMINT = 'unmint',
+  MINTED = 'minted'
 }
 export class NFTMedia {
   @Prop()

@@ -13,8 +13,4 @@ export class FindItemOwnerDto extends PartialType(SearchDto) {
   @IsOptional()
   @IsDateString()
   toMintDate;
-
-  @ApiProperty()
-  @IsOptional()
-  redeemable: number;
 }

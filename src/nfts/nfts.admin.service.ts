@@ -269,22 +269,8 @@ export class NftsAdminService {
     const result = await this.commonService.getTokensInfoDetailByTokenId(
       tokenId,
     );
-    let lockingBalance;
-    if (result) {
-      const { status, lastLockDate } = result;
-      if (status === OwnerStatus.LOCKED) {
-        lockingBalance =
-          new Date().getTime() -
-          new Date(lastLockDate).getTime() +
-          result.lockingBalance;
-      } else if (
-        status === OwnerStatus.UNLOCKED ||
-        status === OwnerStatus.INVALID
-      ) {
-        lockingBalance = result.lockingBalance;
-      }
-    }
-    return { ...result?.toObject(), lockingBalance };
+
+    return { ...result?.toObject() };
   }
 
   async createNftTest() {

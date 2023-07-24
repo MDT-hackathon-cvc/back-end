@@ -7,6 +7,6 @@ export class MintNftDto {
   totalSupply: number;
 
   @ApiProperty()
-  @IsNumber()
-  tokenId: number;
+  @IsString()
+  hash: string;
 }

@@ -13,6 +13,7 @@ export enum OwnerStatus {
   BURNED = 'burned',
   REDEEMED = 'redeemed',
   INVALID = 'invalid',
+  MINTED = 'mint'
 }
 
 @Schema({
@@ -24,16 +25,13 @@ export class Owner {
   tokenId: string;
 
   @Prop()
-  mintedAddress: string;
+  amount: number;
 
-  @Prop({ default: false })
-  isMintedAddressAdmin: boolean;
+  @Prop()
+  mintedAddress: string;
 
   @Prop()
   address: string;
-
-  @Prop({ default: false })
-  isAddressAdmin: boolean;
 
   @Prop({ type: EventOfNFT })
   event: EventOfNFT;
@@ -49,22 +47,6 @@ export class Owner {
 
   @Prop({ default: false })
   status: OwnerStatus;
-
-  // số lượng reward events mà token này tham gia
-  @Prop({ default: 0 })
-  rewardEvents: number;
-
-  // tổng số tiền mà token này đc trả thưởng
-  @Prop({ type: Object })
-  allocatedRewards: mongoose.Types.Decimal128;
-
-  // lưu theo mili giây
-  @Prop({ default: 0 })
-  lockingBalance: number;
-
-  // lưu thời điểm lock hoặc unlock cuối cùng
-  @Prop({ type: Date, default: null })
-  lastLockDate: Date;
 
   @Prop({ type: mongoose.Types.ObjectId, ref: 'NFT' })
   nftId: object;

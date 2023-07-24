@@ -113,6 +113,7 @@ import {
   LockHistoryDocument,
 } from 'src/schemas/LockHistory.schema';
 import { PushNotificationDto } from 'src/notifications/dto/push-notification.dto';
+import { UserJWT } from 'src/auth/role.enum';
 
 const countries = require('../resource/country-key-value.json');
 
@@ -2854,5 +2855,100 @@ export class CommonService implements OnModuleInit {
       },
     ]);
     return result?.length === tokenIds?.length;
+  }
+  
+  async updateOwnerAfterCreateNft(data) { 
+    console.log('data :>> ', data);
+    const { nft, address } = data
+      const owner = {
+        address,
+        tokenId: nft._id,
+        mintedDate: new Date(),
+        status: OwnerStatus.UNMINT,
+        nftId: nft._id,
+        nft: this.convertToSimpleNFT(nft),
+        isTransfer: false,
+      }
+    return this.ownerModel.insertMany(owner)
+  }
+
+  async updateOwnerAfterMint(data) {
+    const { nftId, address, totalSupply, hash } = data;
+    return this.ownerModel.updateOne(
+      {
+        nftId: nftId
+      },
+      {
+        $set: {
+          mintedAddress: address,
+          mintedHash: hash,
+          mintedDate: new Date(),
+          status: OwnerStatus.MINTED,
+          amount: totalSupply,
+          tokenId: nftId
+        }
+      }
+    )
+  };
+
+  async findOwned(user: UserJWT, id: string, requestData) {
+    const match: any = {
+      $and: [
+        { isDeleted: false },
+        {
+          'owners.address': user.address
+        },
+      ],
+    };
+
+    if (requestData.keyword) {
+      match.$or = [
+        {
+          'owners.event.name': {
+            $regex: requestData.keyword,
+            $options: 'i',
+          },
+        },
+        {
+          'owners.tokenId': requestData.keyword,
+        },
+      ];
+    }
+
+    if (requestData?.fromMintDate) {
+      match.$and.push({
+        'owners.mintedDate': { $gte: new Date(requestData.fromMintDate) },
+      });
+    }
+
+    if (requestData?.toMintDate) {
+      match.$and.push({
+        'owners.mintedDate': { $lte: new Date(requestData.toMintDate) },
+      });
+    }
+
+    const pipe: mongoose.PipelineStage[] = [
+      {
+        $match: match,
+      },
+      {
+        $lookup: {
+          from: 'nfts',
+          localField: 'nftId',
+          foreignField: '_id',
+          as: 'nfts',
+        },
+      },
+      {
+        $unwind: '$nfts',
+      },
+    ];
+
+    const result = await Utils.aggregatePaginate(
+      this.ownerModel,
+      pipe,
+      requestData,
+    );
+    return result;
   }
 }

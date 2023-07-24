@@ -78,7 +78,10 @@ export class NftsController {
     return this.nftsService.findOwned(req.user, id, requestData);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
   @Post()
+  @ApiBearerAuth()
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'image', maxCount: 1 },
@@ -86,7 +89,7 @@ export class NftsController {
     ]),
   )
   create(@Request() req, @Body() requestData: CreateNftDto) {
-    return this.nftsService.create(requestData);
+    return this.nftsService.create(requestData, req.user.address);
   }
 
   @Post('/ipfs')
@@ -95,8 +98,11 @@ export class NftsController {
     return this.nftsService.uploadsFileToIpfs(file);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth()
   @Put('/mint/:id')
   mintNft(@Request() req, @Body() requestData: MintNftDto, @Param('id') id: string) {
-    return this.nftsService.mintNft(id, requestData);
+    return this.nftsService.mintNft(id, requestData, req.user.address);
   }
 }
