@@ -1,29 +1,12 @@
-version: "3"
+version: "3.5"
+
 services:
-  mongodb:
-    container_name: marketplace_mongo
-    image: mongo:6-jammy
-    ports:
-      - '27017:27017'
-    volumes:
-      - dbdata:/data/db
-    networks:
-      - common
-  cache:
-    container_name: marketplace_redis
-    image: redis:6.2-alpine
+  back-end:
+    container_name: back-end
     restart: always
+    image: back-end
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - '6379:6379'
-    volumes: 
-      - cache:/data
-    networks:
-      - common
-
-volumes:
-  dbdata:
-  cache:
-
-networks:
-  common:
-    driver: bridge
+      - "${PORT}:${PORT}"
