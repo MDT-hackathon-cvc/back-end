@@ -29,6 +29,7 @@ import {
   FileInterceptor,
 } from '@nestjs/platform-express';
 import { MintNftDto } from './dto/user/mint-nft.dto';
+import { PutOnSaleDto } from './dto/user/put-on-sale.dto';
 
 @ApiTags('nfts')
 @Controller('nfts')
@@ -104,5 +105,13 @@ export class NftsController {
   @Put('/mint/:id')
   mintNft(@Request() req, @Body() requestData: MintNftDto, @Param('id') id: string) {
     return this.nftsService.mintNft(id, requestData, req.user.address);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth()
+  @Post('/sale-orders')
+  putOnSale(@Request() req, @Body() requestData: PutOnSaleDto) {
+    return this.nftsService.putOnSale(requestData, req.user.address);
   }
 }

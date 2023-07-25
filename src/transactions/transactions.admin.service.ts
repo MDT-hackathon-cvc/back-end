@@ -129,7 +129,6 @@ export class TransactionsAdminService {
             name: '$nft.name',
             image: '$nft.image',
             cid: '$nft.token.cid',
-            noOfShare: '$nft.noOfShare',
           },
           unitPrice: '$event.category.unitPrice',
           quantity: 1,

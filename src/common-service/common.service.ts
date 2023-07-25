@@ -1863,9 +1863,7 @@ export class CommonService implements OnModuleInit {
       slug: nft.slug,
       token: this.convertToSimpleToken(nft),
       image: nft.image,
-      royaltyFee: nft.royaltyFee,
       description: nft.description,
-      noOfShare: nft.noOfShare,
     };
     return simpleNFT;
   }
@@ -2831,12 +2829,7 @@ export class CommonService implements OnModuleInit {
             address,
           },
         },
-        {
-          $group: {
-            _id: null,
-            totalLocking: { $sum: '$nft.noOfShare' },
-          },
-        },
+
       ]);
       return result?.length > 0 ? result[0].totalLocking : 0;
     } catch (error) {

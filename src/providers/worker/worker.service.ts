@@ -43,19 +43,6 @@ export class WorkerService {
     private readonly transactionService: TransactionsService,
   ) {}
 
-  async syncAllTransactions(requestData: SyncTransactionDto) {
-    while (true) {
-      const transactions = await this.commonService.syncTransactionTransfer(
-        requestData.type,
-        5000,
-        100,
-      );
-      if (!transactions || transactions.length === 0) {
-        break;
-      }
-      await Utils.wait(300);
-    }
-  }
 
   async getTransferTokens(data: {
     tokenStandard: TokenStandard;
@@ -307,72 +294,6 @@ export class WorkerService {
     });
 
     return transactions;
-  }
-
-  async syncTransactions(requestData: SyncTransactionDto) {
-    // Sync transaction from block chain
-    await this.syncAllTransactions(requestData);
-
-    // Get owner
-    const mapNftOwners = await this.getOwnerFromTransactionTranfer(requestData);
-    const nftIds = [...mapNftOwners.keys()];
-
-    // Update DB
-    const session = await this.connection.startSession();
-    await session.withTransaction(async () => {
-      // Clear tokenIds, owners
-      await this.nftModel.updateMany(
-        {
-          _id: { $in: nftIds },
-        },
-        {
-          $set: {
-            owners: [],
-          },
-        },
-        {
-          session,
-        },
-      );
-
-      // Update owners
-      const promises = [];
-      for (const [nftId, owners] of mapNftOwners.entries()) {
-        promises.push(
-          this.nftModel.updateOne(
-            {
-              _id: Utils.toObjectId(nftId),
-            },
-            {
-              $set: {
-                owners: owners.sort(
-                  (a, b) => Number(a.tokenId) - Number(b.tokenId),
-                ),
-              },
-            },
-            {
-              session,
-            },
-          ),
-        );
-      }
-
-      const result = await Promise.all(promises);
-      this.commonService.logPromise(promises, result);
-    });
-    await session.endSession();
-
-    return {
-      totalNfts: nftIds.length,
-      nftIds,
-      nft: nftIds.map((nftId) => {
-        return {
-          id: nftId,
-          total: mapNftOwners.get(nftId).length,
-          owners: mapNftOwners.get(nftId),
-        };
-      }),
-    };
   }
 
   async receivedData(requestData: WorkerDataDto) {

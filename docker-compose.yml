@@ -10,3 +10,5 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${PORT}:${PORT}"
+    networks:
+      - database_common

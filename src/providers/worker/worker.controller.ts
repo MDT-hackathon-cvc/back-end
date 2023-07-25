@@ -31,17 +31,6 @@ export class WorkerController {
     return this.workerService.generateToken();
   }
 
-  @Roles(UserRole.ADMIN)
-  @Post('/sync-transactions')
-  @HttpCode(200)
-  syncTransactions(@Body() requestData: SyncTransactionDto) {
-    if (requestData.blockNumber) {
-      return this.workerService.syncTransactionsInBlock(requestData);
-    } else {
-      return this.workerService.syncTransactions(requestData);
-    }
-  }
-
   @Roles(UserRole.WORKER)
   @Post()
   @HttpCode(200)

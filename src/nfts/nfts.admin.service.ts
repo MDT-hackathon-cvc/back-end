@@ -109,7 +109,6 @@ export class NftsAdminService {
               },
             ],
           },
-          noOfShare: 1,
           status: 1,
           createdAt: 1,
           totalBurned: '$token.totalBurnt',

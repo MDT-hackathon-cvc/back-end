@@ -39,9 +39,6 @@ export class CategoryInEvent {
 
   @Prop({ type: Object })
   unitPrice: mongoose.Types.Decimal128;
-
-  @Prop()
-  noOfShare: number;
 }
 export class WhiteList {
   @Prop()

@@ -461,7 +461,6 @@ export class TransactionsService {
             name: '$nft.name',
             image: '$nft.image',
             totalSupply: '$nft.token.totalSupply',
-            noOfShare: '$event.category.noOfShare',
             description: '$nft.description',
           },
           quantity: 1,

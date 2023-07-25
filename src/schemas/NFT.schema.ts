@@ -114,7 +114,6 @@ export class SimpleToken {
   cid: string;
 }
 
-// @Schema()
 export class Token extends SimpleToken {
   @Prop()
   address: string;
@@ -164,13 +163,7 @@ export class SimpleNFT {
   image: NFTImage;
 
   @Prop()
-  royaltyFee: number;
-
-  @Prop()
   description: string;
-
-  @Prop()
-  noOfShare: number;
 }
 
 @Schema({
@@ -195,8 +188,6 @@ export class NFT {
   @Prop()
   media: NFTMedia;
 
-  @Prop()
-  royaltyFee: number;
   // type: SimpleCommission, default: {}, _id: false
   @Prop({ type: Token, default: {}, _id: false })
   token: Token;
@@ -214,13 +205,19 @@ export class NFT {
   boughtAt: Date;
 
   @Prop()
-  noOfShare: number;
-
-  @Prop()
   ipfsImage: string;
 
   @Prop()
   ipfsMetadata: string;
+
+  @Prop()
+  price: number;
+
+  @Prop()
+  orderId: string;
+
+  @Prop()
+  hashPutOnSale: string;
 }
 
 export const NFTSchema = SchemaFactory.createForClass(NFT);

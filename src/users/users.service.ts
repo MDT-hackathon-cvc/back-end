@@ -616,7 +616,6 @@ export class UsersService {
           event: 1,
           nftId: 1,
           nftImage: '$nft.image',
-          noOfShare: '$nft.noOfShare',
           status: 1,
           lockingBalance: 1,
         },
@@ -634,12 +633,6 @@ export class UsersService {
       {
         $match: {
           status: { $in: [OwnerStatus.UNLOCKED, OwnerStatus.LOCKED] },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          stakingShare: { $sum: '$noOfShare' },
         },
       },
     ]);

@@ -154,7 +154,6 @@ export class NftsService {
           image: 1,
           name: 1,
           description: 1,
-          noOfShare: 1,
           cid: '$token.cid',
         },
       },
@@ -388,5 +387,13 @@ export class NftsService {
       ),
       this.commonService.updateOwnerAfterMint(data),
     ]);
+  }
+
+  async putOnSale({ price, hashPutOnSale }, address) {
+    
+
+    // Call to contract get orderId base on hash
+
+    // update in nft
   }
 }

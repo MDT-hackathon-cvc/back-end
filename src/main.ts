@@ -7,7 +7,6 @@ import * as expressBasicAuth from 'express-basic-auth';
 import { AllExceptionFilter } from './common/exception/exception.filter';
 import { ValidationPipe } from './common/validation/validation.pipe';
 import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
-import { EventsAdminService } from './events/events.admin.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -58,10 +57,6 @@ async function bootstrap() {
       .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('swagger', app, document);
-    const eventAdminService = app.get(EventsAdminService);
-    await Promise.all([
-      eventAdminService.resetTimeoutEvent(),
-    ]);
   }
 
   await app.listen(process.env.PORT);
