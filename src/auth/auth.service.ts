@@ -1,25 +1,15 @@
-import { NotificationType } from 'src/schemas/Notification.schema';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import {
-  KYCStatus,
   User,
   UserDocument,
   UserRole,
-  UserStatus,
-  UserType,
 } from 'src/schemas/User.schema';
-// import Web3 from 'web3';
-const Web3 = require('web3');
 import { LoginDto } from './dto/login.dto';
-// import { Role } from './role.enum';
 import { Model } from 'mongoose';
-import { Web3Gateway } from 'src/blockchain/web3.gateway';
-import { Utils } from 'src/common/utils';
 import { ApiError } from 'src/common/api';
 import { ErrorCode, TYPE_LOGIN } from 'src/common/constants';
-import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 import { CommonService } from 'src/common-service/common.service';
 
 @Injectable()
@@ -41,13 +31,9 @@ export class AuthService {
   async login(requestData: LoginDto) {
     let address = '';
     let result: any;
-    const web3Gateway = new Web3Gateway();
     // Verify signature
     try {
-      address = await web3Gateway.recover(
-        [requestData.address],
-        requestData.signature,
-      );
+      // Verify signature
     } catch (error) {
       throw new UnauthorizedException(error.message);
     }

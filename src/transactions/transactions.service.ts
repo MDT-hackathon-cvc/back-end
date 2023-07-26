@@ -21,7 +21,6 @@ import {
 } from 'src/common/constants';
 import BigNumber from 'bignumber.js';
 import { ApiError } from 'src/common/api';
-import { Web3Gateway } from 'src/blockchain/web3.gateway';
 import { CommonService } from 'src/common-service/common.service';
 import {
   AdminPermissions,
@@ -29,11 +28,7 @@ import {
   UserStatus,
 } from 'src/schemas/User.schema';
 import { UpdateTransactionHashDto } from './dto/user/update-transaction-hash.dto';
-import {
-  EventDocument,
-  EventStatus,
-  EventType,
-} from 'src/schemas/Event.schema';
+
 
 import { Owner } from 'src/schemas/NFT.schema';
 import { OwnerDocument, OwnerStatus } from 'src/schemas/Owner.schema';
@@ -71,49 +66,8 @@ export class TransactionsService {
     requestData: CreateTransactionDto,
     user: UserJWT,
   ) {
-    if (user.role === UserRole.ADMIN) {
-      throw ApiError(ErrorCode.INVALID_DATA, `admin can't buy a nft`);
-    }
-    const event = await this.commonService.findEventById(requestData.eventId);
-
-    const category = await this.commonService.getCategoryInEvent(
-      event,
-      requestData.nftId,
-    );
-
-    const quantityNftRemain = category.quantityForSale - category.totalMinted;
-    if (quantityNftRemain === 0) {
-      throw ApiError(
-        ErrorCode.UNSUCCESS_TRANSACTION,
-        'Event have been sold out this nft',
-      );
-    }
-
-    if (requestData.quantity && requestData.quantity > quantityNftRemain) {
-      throw ApiError(
-        ErrorCode.UNSUCCESS_TRANSACTION,
-        'quantity must less than total supply of nft in event',
-      );
-    }
-    if (event.creatorAddress === user.address) {
-      throw ApiError(ErrorCode.UNSUCCESS_TRANSACTION, `Can't buy your nft`);
-    }
-
-    if (event.status !== EventStatus.LIVE) {
-      throw ApiError(
-        ErrorCode.UNSUCCESS_TRANSACTION,
-        `Event is not for purchase`,
-      );
-    }
-
-    if (event.status === EventStatus.LIVE && new Date() > event.endDate) {
-      throw ApiError(ErrorCode.UNSUCCESS_TRANSACTION, `Event is out date`);
-    }
-    // prettier-ignore
-    // check whilelist
-    if(event.type === EventType.WHITE_LIST) {
-      this.commonService.validateWhiteListWhenPurchase(event.whitelistInfo.address, user.address)
-    }
+  
+  
   }
 
   async validateCreateTransaction(
@@ -125,240 +79,14 @@ export class TransactionsService {
         return this.validateCreateTransactionBuyNFT(requestData, user);
       case TransactionType.TRANSFER:
         return this.validateCreateTransactionBuyNFT(requestData, user);
-      case TransactionType.ADMIN_MINTED:
-        return this.validateCreateTransactionAdminMint(requestData, user);
       default:
         break;
     }
   }
 
-  // eslint-disable-next-line max-lines-per-function
-  async createTransactionBuyNFT(
-    requestData: CreateTransactionDto,
-    user: UserJWT,
-  ) {
-    const event = await this.commonService.findEventById(requestData.eventId);
-    const [signer, nft, currency, userInfor] = await Promise.all([
-      this.commonService.findSigner(),
-      this.commonService.findNFTById(requestData.nftId),
-      this.commonService.findCurrency(DEFAULT_CURRENCY_NAME),
-      this.commonService.findUserByAddress(user.address),
-    ]);
-    const categogyInEvent = this.commonService.getCategoryInEvent(
-      event,
-      nft._id,
-    );
-
-    // Create signature
-    const transactionId = Utils.createObjectId();
-    const price = Utils.convertPrice(
-      categogyInEvent.unitPrice,
-      currency.decimals,
-    );
-    const revenue = new BigNumber(
-      categogyInEvent.unitPrice.toString(),
-    ).multipliedBy(requestData.quantity);
-    const revenueConvert = Utils.toDecimal(revenue.toString());
-    const revenueUsd = Utils.toDecimal(
-      revenue.multipliedBy(currency.usd).toString(),
-    );
-    // MINTED NFT
-    // update admin earning
-
-    const bdaOfBuyer = await this.commonService.getBDAOfUser(
-      userInfor.originator,
-    );
-    const data = {
-      referrer: user.referrer,
-      signer: signer,
-      nft: nft,
-      quantityForSale: categogyInEvent.quantityForSale,
-      price: price,
-      quantity: requestData.quantity,
-      transactionId: transactionId,
-      event: event,
-      toAddress: requestData.toAddress,
-      bdaOfBuyer: bdaOfBuyer,
-      currencyAddress: currency.address,
-    };
-
-    return this.transactionModel.create({
-      _id: transactionId,
-      nft: this.commonService.convertToSimpleNFT(nft),
-      type: TransactionType.MINTED,
-      fromAddress: event.creatorAddress,
-      toAddress: user.address,
-      quantity: requestData.quantity,
-      status: TransactionStatus.DRAFT,
-      signature: null,
-      event: this.commonService.convertToSimpleEvent(event, categogyInEvent),
-      revenue: revenueConvert,
-      revenueUsd: revenueUsd,
-      affiliateInfor:  {},
-      adminEarning: null,
-    });
-  }
-
-  async createTransactionCancelEvent(
-    requestData: CreateTransactionDto,
-    user: UserJWT,
-  ) {
-    const event = await this.commonService.findEventById(requestData.eventId);
-    if (event.status !== EventStatus.COMING_SOON) {
-      return ApiError();
-    }
-    const transactionId = Utils.createObjectId();
-    const onSaleQuantity = event.categories.reduce(
-      (preValue, currItem) =>
-        preValue + currItem.quantityForSale - currItem.totalMinted,
-      0,
-    );
-    const transaction = new this.transactionModel({
-      _id: transactionId,
-      nft: null,
-      type: TransactionType.CANCELED,
-      fromAddress: user.address,
-      status: TransactionStatus.DRAFT,
-      quantity: onSaleQuantity,
-      event: this.commonService.convertToSimpleEvent(event, null),
-    });
-    // create signature
-    const signature = await this.createSignatureTransactionForCancelEvent(
-      event,
-      transaction,
-    );
-    transaction.signature = signature;
-
-    return transaction.save();
-  }
-
-  async createSignatureTransactionForCancelEvent(
-    event: EventDocument,
-    transaction: TransactionDocument,
-  ) {
-    const web3Gateway = new Web3Gateway();
-    const dataToSign = [
-      this.getActionCodeByTransactionType(TransactionType.CANCELED),
-      event.signature.hash,
-      Utils.formatMongoId(transaction._id),
-    ];
-    const signer = await this.commonService.findSigner();
-    const signature = await web3Gateway.sign(dataToSign, signer.privateKey);
-    const requestData = [
-      Utils.convertDateToSeconds(event.startDate),
-      Utils.convertDateToSeconds(event.endDate),
-      event.creatorAddress,
-      Utils.formatMongoId(event._id),
-      Utils.formatMongoId(transaction._id),
-      event.signature.hash,
-      signature,
-    ];
-    return {
-      address: signer.address,
-      hash: signature,
-      data: dataToSign,
-      requestData: requestData,
-    };
-  }
-
-  async createTransactionAdminMint(
-    requestData: CreateTransactionDto,
-    user: UserJWT,
-  ) {
-    const nft = await this.commonService.findNFTById(requestData.nftId);
-    const transactionId = Utils.createObjectId();
-    const signature = await this.commonService.getDataSignatureAdminMint(
-      requestData.toAddress,
-      nft.id,
-      transactionId,
-    );
-
-    return this.transactionModel.create({
-      _id: transactionId,
-      nft: this.commonService.convertToSimpleNFT(nft),
-      type: TransactionType.ADMIN_MINTED,
-      toAddress: requestData.toAddress,
-      quantity: requestData.quantity,
-      status: TransactionStatus.DRAFT,
-      signature: signature,
-      adminMintedAddress: user.address,
-    });
-  }
-
   async create(requestData: CreateTransactionDto, user?: UserJWT) {
     // Validate
     await this.validateCreateTransaction(requestData, user);
-
-    // Create transaction
-    switch (requestData.type) {
-      case TransactionType.MINTED:
-        return this.createTransactionBuyNFT(requestData, user);
-      case TransactionType.CANCELED:
-        await this.commonService.updateStatusAdminAction(user.address);
-        return this.createTransactionCancelEvent(requestData, user);
-      case TransactionType.ADMIN_MINTED:
-        await this.commonService.updateStatusAdminAction(user.address);
-        return this.createTransactionAdminMint(requestData, user);
-      case TransactionType.DEPOSIT:
-        await this.commonService.updateStatusAdminAction(user.address);
-        return this.createTransactionDeposit(
-          requestData,
-          user,
-          TransactionType.DEPOSIT,
-        );
-    }
-  }
-
-  async createTransactionDeposit(
-    requestData: CreateTransactionDto,
-    user: UserJWT,
-    type: TransactionType,
-  ) {
-    let result;
-    const session = await this.connection.startSession();
-    await session.withTransaction(async () => {
-      const transactionId = Utils.createObjectId();
-      const transaction = new this.transactionModel({
-        _id: transactionId,
-        type: type,
-        status: TransactionStatus.DRAFT,
-        depositAmount: Utils.toDecimal(requestData.depositAmount),
-        fromAddress: user.address,
-        affiliateInfor: null,
-      });
-      const signature = await this.createSignatureForDeposit(transaction);
-      transaction.signature = signature;
-      result = await transaction.save({ session: session });
-    });
-    await session.endSession();
-    return result;
-  }
-
-  async createSignatureForDeposit(transaction: TransactionDocument) {
-    const { _id, fromAddress, depositAmount } = transaction;
-    const usdt = await this.commonService.findCurrency(DEFAULT_CURRENCY_NAME);
-    const amount = Utils.convertPrice(depositAmount, usdt.decimals);
-    const web3Gateway = new Web3Gateway();
-    const dataToSign = [
-      fromAddress,
-      usdt.address,
-      amount,
-      Utils.formatMongoId(_id),
-    ];
-    const signer = await this.commonService.findSigner();
-    const signature = await web3Gateway.sign(dataToSign, signer.privateKey);
-    const requestData = [
-      usdt.address,
-      amount,
-      Utils.formatMongoId(_id),
-      signature,
-    ];
-    return {
-      address: signer.address,
-      hash: signature,
-      data: dataToSign,
-      requestData: requestData,
-    };
   }
 
 
@@ -516,8 +244,6 @@ export class TransactionsService {
       case TransactionStatus.CANCEL:
       case TransactionStatus.FAILED:
         return this.updateCancelTransaction(req, transaction, requestData);
-      case TransactionStatus.SUCCESS:
-        return this.updateSuccessTransaction(req, transaction, requestData);
     }
   }
 
@@ -696,121 +422,4 @@ export class TransactionsService {
     return transaction;
   }
 
-  async updateSuccessTransaction(
-    req: any,
-    transaction: TransactionDocument,
-    requestData: UpdateTransactionDto,
-  ) {
-    const web3Gateway = new Web3Gateway();
-    let transactionEvent;
-    try {
-      transactionEvent = await web3Gateway.getEventByHash(requestData.hash);
-    } catch (error) {
-      console.log('start date: ', new Date());
-      await new Promise((resolve) => setTimeout(resolve, 10000));
-      console.log('end date: ', new Date());
-      const transdb = await this.transactionModel
-        .findOne({ hash: requestData.hash })
-        .lean();
-      if (transdb && transdb.status === TransactionStatus.SUCCESS) {
-        return;
-      }
-      this.logger.error('update(): transactionEvent', transactionEvent);
-      if (transaction.type === TransactionType.RECOVER) {
-        throw ApiError();
-      } else {
-        throw ApiError(
-          ErrorCode.UNSUCCESS_TRANSACTION,
-          'transaction hash is not valid',
-        );
-      }
-    }
-    switch (transaction.type) {
-      case TransactionType.MINTED:
-        return this.handleMintedTransaction(
-          transactionEvent,
-          requestData,
-          transaction.id,
-        );
-      case TransactionType.ADMIN_MINTED:
-        return this.handleAdminMintedTransaction(
-          transactionEvent,
-          requestData,
-          transaction.id,
-        );
-      case TransactionType.APPROVE_REDEMPTION:
-      case TransactionType.CANCEL_REDEMPTION:
-      case TransactionType.CANCELED:
-        return this.commonService.cancelEvent(transaction, requestData);
-      case TransactionType.DEPOSIT:
-        return this.commonService.deposit(transaction, requestData);
-      case TransactionType.ADMIN_UPDATE:
-      case TransactionType.ADMIN_ACTIVE:
-      case TransactionType.ADMIN_DEACTIVE:
-      case TransactionType.ADMIN_DELETE:
-      case TransactionType.ADMIN_SETTING:
-        return this.commonService.updateAdminAction(transaction, requestData);
-    }
-  }
-
-  async handleMintedTransaction(
-    transactionEvent: any,
-    requestData: UpdateTransactionDto,
-    id: string,
-  ) {
-    if (transactionEvent.name === Contract.EVENT.MINT_NFT) {
-      const tokenIds = transactionEvent.tokenIds;
-      return this.commonService.buyNFT(id, requestData, tokenIds);
-    }
-  }
-
-  async handleAdminMintedTransaction(
-    transactionEvent: any,
-    requestData: UpdateTransactionDto,
-    id: string,
-  ) {
-    if (transactionEvent.name === Contract.EVENT.ADMIN_MINT_NFT) {
-      const tokenIds = [transactionEvent.tokenId];
-      return this.commonService.adminMintNFT(id, requestData, tokenIds);
-    }
-  }
-
-
-  async validateCreateTransactionAdminMint(
-    requestData: CreateTransactionDto,
-    user: UserJWT,
-  ) {
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
-      throw new ForbiddenException();
-    }
-
-    const permissions = await this.commonService.getPermissionsOfAdmin(
-      user.address,
-    );
-    if (
-      !permissions.includes(AdminPermissions.NFT_MANAGEMENT) &&
-      !permissions.includes(AdminPermissions.USER_MANAGEMENT)
-    ) {
-      throw new ForbiddenException();
-    }
-
-    const isReceiverBda = await this.commonService.checkBda(
-      requestData.toAddress,
-    );
-    if (!isReceiverBda) {
-      throw ApiError(ErrorCode.USER_NOT_BDA, 'receiver is not a BDA');
-    }
-
-    const countNftBlack = await this.commonService.countNftBlacks(
-      requestData.toAddress,
-      false,
-    );
-    if (countNftBlack === 1) {
-      throw ApiError(
-        ErrorCode.USER_HAD_NFT_BLACK,
-        'A BDA just have only one NFT black admin minted!',
-      );
-    }
-    return;
-  }
 }

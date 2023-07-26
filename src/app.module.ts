@@ -16,8 +16,6 @@ import { CommonModule } from './common-service/common.module';
 import { SocketModule } from './providers/socket/socket.module';
 import { TokensModule } from './tokens/tokens.module';
 import { Config, ConfigSchema } from './schemas/Config.schema';
-import { EventsModule } from './events/events.module';
-import { EventSchema, Event } from './schemas/Event.schema';
 
 @Module({
   imports: [
@@ -34,7 +32,6 @@ import { EventSchema, Event } from './schemas/Event.schema';
     MongooseModule.forRoot(process.env.MONGODB_URL),
     MongooseModule.forFeature([
       { name: Config.name, schema: ConfigSchema },
-      { name: Event.name, schema: EventSchema },
     ]),
     SocketModule,
     CommonModule,
@@ -46,7 +43,6 @@ import { EventSchema, Event } from './schemas/Event.schema';
     TransactionsModule,
     NotificationsModule,
     TokensModule,
-    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

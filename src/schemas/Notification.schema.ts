@@ -1,7 +1,6 @@
 import { Transaction, TransactionDocument } from './Transaction.schema';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { SimpleEvent } from './Event.schema';
 import { SimpleNFT } from './NFT.schema';
 const paginate = require('mongoose-paginate-v2');
 const aggregatePaginate = require('mongoose-aggregate-paginate-v2');
@@ -99,9 +98,6 @@ export class Notification {
 
   @Prop()
   toAddress: string;
-
-  @Prop({ type: SimpleEvent })
-  mintingEvent: SimpleEvent;
 
   @Prop({ type: SimpleNFT })
   nft: SimpleNFT;

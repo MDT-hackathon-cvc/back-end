@@ -57,17 +57,6 @@ export class AppController {
     return this.appService.clearCache();
   }
 
-  @Post('/kyc')
-  webhookKyc(@Body() requestData: any) {
-    return this.appService.checkKyc(requestData);
-  }
-
-  @Get('/overview')
-  async getOverview(@Request() req) {
-    const user = await Utils.getUser(req);
-    return this.appService.getOverview(user);
-  }
-
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   // @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)

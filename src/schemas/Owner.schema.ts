@@ -2,7 +2,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import * as mongoose from 'mongoose';
 const paginate = require('mongoose-paginate-v2');
 const aggregatePaginate = require('mongoose-aggregate-paginate-v2');
-import { EventOfNFT } from './Event.schema';
 import { SimpleNFT } from './NFT.schema';
 
 export type OwnerDocument = Owner & Document;
@@ -32,9 +31,6 @@ export class Owner {
 
   @Prop()
   address: string;
-
-  @Prop({ type: EventOfNFT })
-  event: EventOfNFT;
 
   @Prop()
   mintedHash: string;

@@ -852,7 +852,6 @@ export class UsersService {
       permissions: permissions,
       adminName: adminName,
     };
-    return this.commonService.createTransactionAdminAction(data);
   }
 
   async findAllAdmin(requestData: SearchAdminDto) {
@@ -985,7 +984,6 @@ export class UsersService {
         permissions: permissions ? permissions : admin.permissions,
       };
       if (adminName) data.adminName = adminName;
-      return this.commonService.createTransactionAdminAction(data);
     } else {
       // ---- Update adminName, permissions
       if (permissions && admin.status === UserStatus.ACTIVE) {
@@ -998,7 +996,6 @@ export class UsersService {
         if (adminName) {
           data.adminName = adminName;
         }
-        return this.commonService.createTransactionAdminAction(data);
       }
 
       if (permissions) admin.permissions = permissions;
@@ -1064,7 +1061,6 @@ export class UsersService {
       permissions: [],
     };
 
-    return this.commonService.createTransactionAdminAction(data);
   }
 
   async validatePermission(data) {

@@ -8,8 +8,6 @@ import {
 import { NFT, NFTDocument } from './../schemas/NFT.schema';
 
 import { Injectable, Logger, LogLevel } from '@nestjs/common';
-import { CreateTransactionDto } from './dto/user/create-transaction.dto';
-import { UpdateTransactionDto } from './dto/user/update-transaction.dto';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import {
@@ -18,17 +16,12 @@ import {
   TransactionType,
   TransactionStatus,
 } from 'src/schemas/Transaction.schema';
-import {
-  TimeDashboardType,
-  DashboardDto,
-} from './dto/admin/get-info-dashboard.dto';
-import { FindTransactionDto } from './dto/admin/find-transaction.dto';
+
 import mongoose from 'mongoose';
 import { Utils } from 'src/common/utils';
 import {
   CacheKeyName,
   ErrorCode,
-  FIX_FLOATING_POINT,
 } from 'src/common/constants';
 import { CommonService } from 'src/common-service/common.service';
 import * as moment from 'moment';
@@ -37,7 +30,6 @@ import { UserJWT } from 'src/auth/role.enum';
 import { ApiError } from 'src/common/api';
 
 import { Owner, OwnerDocument, OwnerStatus } from 'src/schemas/Owner.schema';
-import { Web3ETH } from 'src/blockchain/web3.eth';
 
 @Injectable()
 export class TransactionsAdminService {
@@ -55,120 +47,6 @@ export class TransactionsAdminService {
     private ownerModel: Model<OwnerDocument>,
 
   ) {}
-
-  async findAll(requestData: FindTransactionDto) {
-    const userSystem = await this.commonService.userWithRoleCompany();
-    const conditionAnd: mongoose.FilterQuery<TransactionDocument>[] = [
-      {
-        status: TransactionStatus.SUCCESS,
-        type: TransactionType.MINTED,
-      },
-    ];
-    // Search by buyer, referrer, bda, event name
-    if (requestData?.keyword) {
-      const constidionOr: mongoose.FilterQuery<TransactionDocument>[] = [
-        { toAddress: { $regex: requestData.keyword, $options: 'i' } },
-        {
-          'affiliateInfor.referrerDirect.address': {
-            $regex: requestData.keyword,
-            $options: 'i',
-          },
-        },
-        {
-          'affiliateInfor.bda.address': {
-            $regex: requestData.keyword,
-            $options: 'i',
-          },
-        },
-        {
-          'event.name': {
-            $regex: requestData.keyword,
-            $options: 'i',
-          },
-        },
-      ];
-      conditionAnd.push({ $or: constidionOr });
-    }
-
-    if (requestData?.startDate) {
-      conditionAnd.push({
-        createdAt: { $gte: new Date(requestData.startDate) },
-      });
-    }
-
-    if (requestData?.endDate) {
-      conditionAnd.push({
-        createdAt: { $lte: new Date(requestData.endDate) },
-      });
-    }
-
-    if (requestData?.nftIds) {
-      conditionAnd.push({
-        'nft.id': { $in: requestData.nftIds },
-      });
-    }
-
-    if (requestData?.userReferrals) {
-      conditionAnd.push({
-        'affiliateInfor.referrerDirect.address': { $ne: userSystem.address },
-      });
-    }
-
-    const pipe: mongoose.PipelineStage[] = [
-      {
-        $match: {
-          $and: conditionAnd,
-        },
-      },
-      {
-        $project: {
-          transactionDate: '$createdAt',
-          buyer: '$toAddress',
-          nft: {
-            id: '$nft.id',
-            name: '$nft.name',
-            image: '$nft.image',
-            cid: '$nft.token.cid',
-          },
-          unitPrice: '$event.category.unitPrice',
-          quantity: 1,
-          subTotal: '$revenue',
-          adminEarning: 1,
-          affiliateInfor: 1,
-          event: 1,
-          hash: 1,
-        },
-      },
-    ];
-
-    const result = await Utils.aggregatePaginate(
-      this.transactionModel,
-      pipe,
-      requestData,
-    );
-
-    const revenueOverview = await this.transactionModel.aggregate([
-      {
-        $match: {
-          $and: conditionAnd,
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalVolume: { $sum: '$revenue' },
-          totalEarnings: { $sum: { $toDecimal: '$adminEarning' } },
-          totalTokensSold: { $sum: '$quantity' },
-        },
-      },
-      { $unset: ['_id'] },
-    ]);
-    return {
-      ...result,
-      ...revenueOverview[0],
-      totalTransactions: result?.totalDocs || 0,
-    };
-  }
 
   async findOne(id: string) {
     const cacheKey = CacheKeyName.GET_TRANSACTIONS_DETAIL_BY_ID(id);
@@ -298,7 +176,6 @@ export class TransactionsAdminService {
       transactionId: transactionId,
       receiver: recipientAddress,
     };
-    const signature = await this.commonService.getRecoverDataSignature(data);
 
     return this.transactionModel.create({
       _id: transactionId,
@@ -308,40 +185,7 @@ export class TransactionsAdminService {
       toAddress: recipientAddress,
       quantity: 1,
       status: TransactionStatus.DRAFT,
-      signature,
       faultyToken,
     });
-  }
-
-  async validateFieldsWhenRecovering(
-    user: UserJWT,
-    body: RecoverTransactionDto,
-  ) {
-    const web3ETH = new Web3ETH();
-    const tokenInfo = await this.ownerModel.findOne({
-      tokenId: body.faultyToken,
-      nftId: Utils.toObjectId(body.nftId),
-    });
-    if (!tokenInfo) {
-      throw ApiError(
-        ErrorCode.NO_TOKEN_EXISTS,
-        `Faulty token has not existence`,
-      );
-    }
-
-    if (tokenInfo.status === OwnerStatus.INVALID) {
-      throw ApiError(
-        ErrorCode.TOKEN_IS_INVALID,
-        `Faulty token has been marked as invalid`,
-      );
-    }
-
-    if (tokenInfo.status === OwnerStatus.BURNED) {
-      throw ApiError(ErrorCode.TOKEN_IS_INVALID, `Faulty token has been burnt`);
-    }
-
-    if (!web3ETH.checkAddress(body.recipientAddress)) {
-      throw ApiError(ErrorCode.INVALID_ADDRESS, 'Invalid address');
-    }
   }
 }

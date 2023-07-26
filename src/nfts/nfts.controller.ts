@@ -110,8 +110,8 @@ export class NftsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
   @ApiBearerAuth()
-  @Post('/sale-orders')
-  putOnSale(@Request() req, @Body() requestData: PutOnSaleDto) {
-    return this.nftsService.putOnSale(requestData, req.user.address);
+  @Put('/sale-orders/:id')
+  putOnSale(@Request() req, @Body() requestData: PutOnSaleDto, @Param('id') id: string) {
+    return this.nftsService.putOnSale(requestData, req.user.address, id);
   }
 }

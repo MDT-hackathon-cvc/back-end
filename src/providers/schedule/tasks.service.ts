@@ -1,4 +1,3 @@
-import { EventDocument, EventStatus, Event } from 'src/schemas/Event.schema';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -25,7 +24,6 @@ export class TasksService {
     @InjectConnection() private readonly connection: mongoose.Connection,
     @InjectModel(Config.name) private configModel: Model<ConfigDocument>,
     @InjectModel(NFT.name) private nftModel: Model<NFTDocument>,
-    @InjectModel(Event.name) private eventModel: Model<EventDocument>,
 
     @InjectModel(Notification.name)
     private notificationModel: Model<NotificationDocument>,

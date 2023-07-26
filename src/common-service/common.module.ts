@@ -21,7 +21,6 @@ import {
   TransactionTransferSync,
   TransactionTransferSyncSchema,
 } from 'src/schemas/TransactionTransferSync.schema';
-import { EventSchema, Event } from 'src/schemas/Event.schema';
 import { Owner, OwnerSchema } from 'src/schemas/Owner.schema';
 import { LockHistory, LockHistorySchema } from 'src/schemas/LockHistory.schema';
 
@@ -40,7 +39,6 @@ import { LockHistory, LockHistorySchema } from 'src/schemas/LockHistory.schema';
         name: TransactionTransferSync.name,
         schema: TransactionTransferSyncSchema,
       },
-      { name: Event.name, schema: EventSchema },
       { name: Owner.name, schema: OwnerSchema },
       { name: LockHistory.name, schema: LockHistorySchema },
     ]),

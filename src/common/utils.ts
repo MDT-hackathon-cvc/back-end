@@ -1,15 +1,12 @@
-import { Web3ETH } from 'src/blockchain/web3.eth';
 import { Logger } from '@nestjs/common';
 import ObjectID from 'bson-objectid';
 import { Types } from 'mongoose';
 const CryptoJS = require('crypto-js');
 import BigNumber from 'bignumber.js';
-import { UserJWT } from 'src/auth/role.enum';
 import { PagingDocument } from './common-type';
 import { Token, TokenStandard } from 'src/schemas/NFT.schema';
 import { Contract, ErrorCode, FIX_FLOATING_POINT } from './constants';
 import { ApiError } from './api';
-import { KMS } from 'aws-sdk';
 import { AwsUtils } from './aws.util';
 import mongoose from 'mongoose';
 const jwt = require('jsonwebtoken');
@@ -361,7 +358,7 @@ export class Utils {
   }
 
   public static formatAddress(address: any) {
-    return new Web3ETH().toChecksumAddress(address);
+
   }
 
   public static getFirstHourOfDay(day: Date) {
@@ -405,9 +402,6 @@ export class Utils {
   };
 
   public static async getTotalReserve() {
-    const totalReserve = await new Web3ETH().balanceOfDeposit(
-      process.env.CONTRACT_EXCHANGE,
-    );
-    return totalReserve / FIX_FLOATING_POINT;
+    
   }
 }

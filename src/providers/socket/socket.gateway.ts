@@ -11,12 +11,6 @@ import {
 import { Socket, Server } from 'socket.io';
 import { User, UserDocument, UserRole } from 'src/schemas/User.schema';
 import { SOCKET_ROOM } from './socket.enum';
-import {
-  Event,
-  EventDocument,
-  EventStatus,
-  EventType,
-} from 'src/schemas/Event.schema';
 
 @WebSocketGateway({
   cors: true,

@@ -8,5 +8,5 @@ export class PutOnSaleDto {
   
   @ApiProperty()
   @IsString()
-  hashPutOnSale
+  hashPutOnSale: string;
 }

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Event, EventSchema } from 'src/schemas/Event.schema';
 import { User, UserSchema } from 'src/schemas/User.schema';
 import { SocketGateway } from './socket.gateway';
 

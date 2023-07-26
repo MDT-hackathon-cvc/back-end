@@ -259,7 +259,7 @@ export class NftsService {
   }
 
   async findOwned(user: UserJWT, id: string, requestData: FindItemOwnerDto) {
-    return this.commonService.findOwned(user, id, requestData)
+    return this.commonService.findOwned(user, id, requestData);
   }
 
   async findOwnerNft(address: string) {
@@ -277,7 +277,7 @@ export class NftsService {
           as: 'nfts',
         },
       },
-      { $unwind: '$nfts'},
+      { $unwind: '$nfts' },
       // {
       //   $project: {
       //     _id: '$nfts._id',
@@ -330,6 +330,7 @@ export class NftsService {
     createdNft.name = name;
     createdNft.description = description;
     createdNft.ipfsMetadata = link;
+    createdNft.creatorAddress = address;
 
     await createdNft.save();
     const dataUpdateOwner = {
@@ -379,7 +380,7 @@ export class NftsService {
           'token.totalSupply': totalSupply,
           'token.ids': id,
           status: NFTStatus.MINTED,
-          code: id
+          code: id,
         },
         {
           new: true,
@@ -389,11 +390,21 @@ export class NftsService {
     ]);
   }
 
-  async putOnSale({ price, hashPutOnSale }, address) {
-    
-
+  async putOnSale({ price, hashPutOnSale }, address, id) {
     // Call to contract get orderId base on hash
-
-    // update in nft
+    const provider = this.commonService.getProvider(process.env.CHAIN_ID);
+    const dataPutOneSale = await provider.getTransactionReceipt(hashPutOnSale);
+    const orderId = dataPutOneSale.logs[1].data;
+    return this.nftModel.updateOne(
+      { _id: id, creatorAddress: address },
+      {
+        $set: {
+          price: price,
+          hashPutOnSale: hashPutOnSale,
+          status: NFTStatus.ON_SALE,
+          orderId: orderId,
+        },
+      },
+    );
   }
 }

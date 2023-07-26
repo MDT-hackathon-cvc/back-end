@@ -5,12 +5,7 @@ import { Model } from 'mongoose';
 import { Config, ConfigDocument, Signer } from './schemas/Config.schema';
 import { QUEUE } from './common/constants';
 import mongoose from 'mongoose';
-import {
-  Event,
-  EventDocument,
-  EventStatus,
-  EventType,
-} from './schemas/Event.schema';
+
 import { TransactionsService } from './transactions/transactions.service';
 
 @Injectable()
@@ -20,7 +15,6 @@ export class AppService {
     private transactionService: TransactionsService,
     @InjectConnection() private readonly connection: mongoose.Connection,
     @InjectModel(Config.name) private configModel: Model<ConfigDocument>,
-    @InjectModel(Event.name) private eventModel: Model<EventDocument>,
   ) {}
 
   getHello() {
@@ -55,75 +49,6 @@ export class AppService {
     console.log(data);
   }
 
-  async getOverview(user: any) {
-    const { totalNft, sumVolume, totalMinters } =
-      await this.transactionService.overview();
-    let pipe;
-
-    if (user) {
-      pipe = [
-        {
-          $match: {
-            $and: [
-              {
-                status: { $in: [EventStatus.LIVE, EventStatus.COMING_SOON] },
-                isDeleted: false,
-              },
-              {
-                $or: [
-                  {
-                    isPrivate: false,
-                  },
-                  {
-                    isPrivate: true,
-                    type: EventType.WHITE_LIST,
-                    'whitelistInfo.address': {
-                      $elemMatch: {
-                        $eq: user?.address,
-                      },
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        },
-        {
-          $sort: {
-            status: 1,
-            name: 1,
-            startDate: 1,
-            endDate: 1,
-          },
-        },
-        { $limit: 2 },
-      ];
-    } else {
-      pipe = [
-        {
-          $match: {
-            status: { $in: [EventStatus.LIVE, EventStatus.COMING_SOON] },
-          },
-        },
-        {
-          $sort: {
-            status: 1,
-            name: 1,
-            startDate: 1,
-            endDate: 1,
-          },
-        },
-        { $limit: 2 },
-      ];
-    }
-    const events = await this.eventModel.aggregate(pipe);
-    return {
-      itemsSold: totalNft,
-      totalVolume: sumVolume,
-      totalMinters,
-      events,
-    };
-  }
 
   async getPermissionAdmin(address: string) {
     return this.commonService.getPermissionsOfAdmin(address);

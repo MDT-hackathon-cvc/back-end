@@ -43,16 +43,6 @@ export class NftsAdminController {
     return this.nftsService.findAll(requestData);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string, @Query() requestData: SearchDto) {
-    return this.nftsService.findOne(id, requestData);
-  }
-
-  @Get(':id/owner')
-  findOwner(@Param('id') id: string, @Query() requestData: FindOwnerDto) {
-    return this.nftsService.findOwner(id, requestData);
-  }
-
   @UseGuards(PermissionGuard)
   @Permissions(AdminPermissions.NFT_MANAGEMENT)
   @Post(':id/supply')

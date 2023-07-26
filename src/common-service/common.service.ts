@@ -8,25 +8,17 @@ import {
   Logger,
   OnModuleInit,
 } from '@nestjs/common';
-import { Model, Mongoose } from 'mongoose';
+import { Model } from 'mongoose';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { ApiError } from 'src/common/api';
 import {
   CacheKeyName,
   CONFIG_TO_BECOME_BDA,
   Contract,
-  DEFAULT_BDA,
-  DEFAULT_BDA_RATIO,
-  DEFAULT_COMMISSION_RATIO,
-  DEFAULT_DIVISOR,
-  DEFAULT_REFERRER,
+
   ErrorCode,
-  FORTY_PERCENT,
   MIMEType,
-  QUEUE,
-  QUEUE_SETTINGS,
   ROLE_NOTI,
-  VALUE_A_SHARE,
 } from 'src/common/constants';
 import {
   NFT,
@@ -54,7 +46,6 @@ import {
 } from 'src/schemas/Config.schema';
 import { Utils } from 'src/common/utils';
 import { Counter, CounterDocument } from 'src/schemas/Counter.schema';
-import { Web3Gateway } from 'src/blockchain/web3.gateway';
 import mongoose from 'mongoose';
 import { Lock, LockDocument, LockType } from 'src/schemas/Lock.schema';
 import { Cache, CachingConfig } from 'cache-manager';
@@ -64,28 +55,20 @@ import { SocketGateway } from 'src/providers/socket/socket.gateway';
 import {
   Content,
   Notification,
-  NotificationAddress,
   NotificationDocument,
   NotificationType,
 } from 'src/schemas/Notification.schema';
 import { SOCKET_EVENT, SOCKET_ROOM } from 'src/providers/socket/socket.enum';
 import {
-  AdminActions,
   AdminPermissions,
-  KYCInfo,
-  KYCStatus,
   User,
   UserDocument,
   UserRole,
   UserStatus,
   UserType,
 } from 'src/schemas/User.schema';
-import { Web3PastEvent, Web3Token } from 'src/blockchain/web3.type';
 import { AwsUtils } from 'src/common/aws.util';
 import { TransferDto } from 'src/providers/worker/dto/transfer.dto';
-import * as Queue from 'bee-queue';
-import { IpfsGateway } from 'src/providers/ipfs/ipfs.gateway';
-import * as moment from 'moment';
 import {
   TransactionTransfer,
   TransactionTransferDocument,
@@ -95,15 +78,7 @@ import {
   TransactionTransferSync,
   TransactionTransferSyncDocument,
 } from 'src/schemas/TransactionTransferSync.schema';
-import {
-  CategoryInEvent,
-  Event,
-  EventDocument,
-  EventStatus,
-  EventType,
-  SimpleEvent,
-} from 'src/schemas/Event.schema';
-import { Web3ETH } from 'src/blockchain/web3.eth';
+
 import ObjectID from 'bson-objectid';
 import axios from 'axios';
 import { SingleCandidateDto } from 'src/users/dto/kyc-user.dto';
@@ -114,6 +89,7 @@ import {
 } from 'src/schemas/LockHistory.schema';
 import { PushNotificationDto } from 'src/notifications/dto/push-notification.dto';
 import { UserJWT } from 'src/auth/role.enum';
+import { ethers } from 'ethers';
 
 
 export enum ActionType {
@@ -149,9 +125,6 @@ export class CommonService implements OnModuleInit {
     @InjectModel(TransactionTransfer.name)
     private transactionTransferModel: Model<TransactionTransferDocument>,
     private socketGateway: SocketGateway,
-
-    @InjectModel(Event.name)
-    private eventModel: Model<EventDocument>,
 
     @InjectModel(LockHistory.name)
     private lockHistoryModel: Model<LockHistoryDocument>,
@@ -559,68 +532,6 @@ export class CommonService implements OnModuleInit {
     );
   }
 
-  cancelEvent(
-    transaction: TransactionDocument,
-    requestData: UpdateTransactionDto,
-  ) {
-    return this.withLock(
-      {
-        type: LockType.CANCEL_EVENT,
-        documentId: transaction._id,
-      },
-      async () => {
-        const event = await this.findEventById(transaction.event.id);
-        // Check transaction success
-        const alreadyCompleted = this.checkTransactionAlreadyCompleted(
-          transaction,
-          requestData.isFromWorker,
-        );
-        if (alreadyCompleted.isAlreadyCompleted) {
-          return alreadyCompleted;
-        }
-        const session = await this.connection.startSession();
-        await session.withTransaction(async () => {
-          const promises = [];
-          // Update Transaction: status
-          transaction.status = TransactionStatus.SUCCESS;
-          transaction.hash = requestData.hash;
-          transaction.message = requestData?.message || '';
-          if (requestData.isFromWorker) {
-            transaction.syncedAt = new Date();
-          }
-          promises.push(transaction.save({ session }));
-          // update event
-          event.status = EventStatus.CANCEL;
-          event.hashCancel = requestData.hash;
-          promises.push(event.save({ session }));
-          // update nft info
-          for (const category of event.categories) {
-            const nft = await this.findNFTById(category.nftId);
-            promises.push(
-              this.nftModel.updateOne(
-                {
-                  _id: category.nftId,
-                },
-                {
-                  $inc: {
-                    'token.totalAvailable':
-                      category.quantityForSale - category.totalMinted,
-                  },
-                  $set: {
-                    status: this.nftStatusAfterCancelingEvent(category, nft),
-                  },
-                },
-                { session },
-              ),
-            );
-          }
-          const results = await Promise.all(promises);
-          this.logPromise(promises, results);
-        });
-        session.endSession();
-      },
-    );
-  }
 
   deposit(transaction: TransactionDocument, requestData: UpdateTransactionDto) {
     return this.withLock(
@@ -665,174 +576,6 @@ export class CommonService implements OnModuleInit {
       : NFTStatus.ON_SALE;
   }
 
-  async updateTransactionBuyNFT(data: {
-    requestData: UpdateTransactionDto;
-    transaction: TransactionDocument;
-    tokenIds: string[];
-    session: any;
-  }) {
-    const { requestData, transaction, tokenIds, session } = data;
-
-    transaction.status = TransactionStatus.SUCCESS;
-    transaction.hash = requestData.hash;
-    transaction.message = requestData.message;
-    const newEvent = {
-      ...transaction.event,
-      category: { ...transaction.event.category },
-    };
-    newEvent.category.totalMinted += tokenIds.length;
-    transaction.event = newEvent;
-    if (tokenIds && tokenIds.length > 0) {
-      transaction.tokenIds = tokenIds;
-    }
-    if (requestData.isFromWorker) {
-      transaction.syncedAt = new Date();
-    }
-    return transaction.save({ session });
-  }
-
-  async updateNFT(data: {
-    transaction: TransactionDocument;
-    nft: NFTDocument;
-    event?: EventDocument;
-    session: any;
-  }) {
-    const { transaction, nft, event, session } = data;
-    const updateNFT: any = {};
-    const totalNftRemain = nft.token.totalSupply - nft.token.totalMinted;
-    if (transaction.type == TransactionType.MINTED) {
-      if (totalNftRemain - transaction.quantity <= 0) {
-        this.logger.debug(
-          `updateNFT(): NFT ${nft._id} sold out. TotalSuppy = ${nft.token.totalSupply}. TotalMinted = ${nft.token.totalMinted}`,
-        );
-        updateNFT.status = NFTStatus.SOLD_OUT;
-      }
-      if (totalNftRemain - transaction.quantity > 0) {
-        this.logger.debug(
-          `updateNFT(): NFT ${nft._id} off-sale. TotalSuppy = ${nft.token.totalSupply}. TotalMinted = ${nft.token.totalMinted}`,
-        );
-        const checkNftOffSale = await this.checkOffSaleNft(
-          nft.id,
-          event,
-          transaction.quantity,
-        );
-        if (checkNftOffSale) updateNFT.status = NFTStatus.OFF_SALE;
-      }
-    }
-
-    // MINTED
-    // prettier-ignore
-    if (
-      transaction.type === TransactionType.MINTED ||
-      transaction.type === TransactionType.ADMIN_MINTED ||
-      transaction.fromAddress === Contract.ZERO_ADDRESS
-    ) {
-      this.logger.log(
-        `updateNFT(): Minted ${transaction.quantity} NFT ${nft._id} TokenID ${transaction.tokenIds}`,
-      );
-      // Update token id and owners
-      const listOwners = []
-      for (const itemTokenId of transaction.tokenIds) {
-        const owner = {
-          tokenId: itemTokenId,
-          mintedAddress: transaction.type === TransactionType.ADMIN_MINTED ? transaction.adminMintedAddress : transaction.toAddress,
-          isMintedAddressAdmin: transaction.type === TransactionType.ADMIN_MINTED ? true : false,
-          address: transaction.toAddress,
-          isAddressAdmin: false,
-          event: {
-            id: event?._id,
-            imgUrl: event?.imgUrl,
-            name: event?.name
-          },
-          mintedDate: new Date(),
-          mintedHash: transaction.hash,
-          mintedValue: transaction.event ? Utils.toDecimal(transaction.event?.category?.unitPrice) : 0,
-          status: OwnerStatus.UNLOCKED,
-          rewardEvents: 0,
-          nftId: nft._id,
-          nft: this.convertToSimpleNFT(nft),
-          isTransfer: false
-        }
-        listOwners.push(owner)
-      }
-
-      const updateTokenIdToNft = {
-        "token.ids": {
-          $each: transaction.tokenIds
-        },
-      };
-      const result = await Promise.all([
-        this.ownerModel.insertMany(listOwners, { session: session }),
-        this.nftModel.findOneAndUpdate(
-          {
-            _id: nft._id
-          },
-          {
-            $inc: {
-              'token.totalMinted': transaction.quantity,
-            },
-            $set: {
-              ...updateNFT,
-            },
-            $push: {
-              ...updateTokenIdToNft
-            }
-          },
-          {
-            session,
-            new: true,
-          },
-        )
-      ])
-      // push noti
-      if(updateNFT.status === NFTStatus.SOLD_OUT){
-        await this.pushNotificationAdmin(NotificationType.P2,{nft: transaction.nft});
-      }
-      return result
-    }
-
-    // BURN
-    if (transaction.toAddress === Contract.ZERO_ADDRESS) {
-      this.logger.log(
-        `updateNFT(): Burn ${transaction.quantity} NFT ${nft._id} TokenID ${transaction.tokenIds}`,
-      );
-      const tokenId = transaction.tokenIds[0];
-
-      return this.nftModel.findOneAndUpdate(
-        {
-          _id: nft._id,
-        },
-        {
-          $set: {
-            ...updateNFT,
-          },
-          $inc: {
-            'token.totalSupply': -transaction.quantity,
-            'token.totalMinted': -transaction.quantity,
-            'token.totalBurnt': transaction.quantity,
-          },
-          $pull: {
-            'token.ids': tokenId,
-          },
-        },
-        {
-          session,
-          new: true,
-        },
-      );
-    }
-
-    if (transaction.type === TransactionType.TRANSFER_OUTSIDE) {
-      const tokenId = transaction.tokenIds[0];
-      return this.updateOwnerTransferNft(
-        tokenId,
-        transaction.toAddress,
-        session,
-        nft._id,
-      );
-    }
-  }
-
   checkTransactionAlreadyCompleted(
     transaction: TransactionDocument,
     isFromWorker = false,
@@ -852,278 +595,6 @@ export class CommonService implements OnModuleInit {
     return {
       isAlreadyCompleted: false,
     };
-  }
-
-  async buyNFT(
-    transactionId: string,
-    requestData: UpdateTransactionDto,
-    tokenIds: string[],
-  ) {
-    return this.withLock(
-      { type: LockType.BUY_NFT, documentId: transactionId },
-      async () => {
-        const transaction = await this.findTransactionById(transactionId);
-
-        // Check transaction success
-        const alreadyCompleted = this.checkTransactionAlreadyCompleted(
-          transaction,
-          requestData.isFromWorker,
-        );
-        if (alreadyCompleted.isAlreadyCompleted) {
-          return alreadyCompleted;
-        }
-
-        // Clear cache
-        await this.clearCacheNFT(transaction);
-
-        // Get NFT, Collection, User information
-        const [nft, event] = await Promise.all([
-          this.nftModel.findById(transaction.nft.id),
-          this.eventModel.findById(transaction.event.id),
-        ]);
-
-        // check commission fee
-
-        const session = await this.connection.startSession();
-        await session.withTransaction(async () => {
-          // Update Transaction: status, revenue
-          await this.updateTransactionBuyNFT({
-            requestData,
-            transaction,
-            tokenIds,
-            session,
-          });
-
-          await this.updateEventBuyNft({
-            transaction,
-            nft,
-            event,
-            session,
-          });
-
-          await this.updateNFT({
-            transaction,
-            nft,
-            event,
-            session,
-          });
-
-          await this.updateUserAfterBuyingNft({
-            transaction,
-            nft,
-            event,
-            session,
-          });
-        });
-        await session.endSession();
-        // Push notification
-        await this.pushNotificationAdmin(NotificationType.P1, {
-          transaction,
-        });
-
-        const { bda, referrerDirect } = transaction.affiliateInfor;
-        if (bda?.address === referrerDirect?.address) {
-          // BDA & Direct Referrer
-          await this.pushNotificationUser(NotificationType.N15, {
-            toAddress: bda.address,
-            userAddress: transaction.toAddress,
-            transaction,
-            role: ROLE_NOTI.BDA_DIRECT_REFERRE,
-            commissionFee: new BigNumber(bda?.commissionFee.toString()).plus(
-              referrerDirect.commissionFee.toString(),
-            ),
-          });
-        } else {
-          await Promise.all([
-            this.pushNotificationUser(NotificationType.N15, {
-              // BDA
-              toAddress: bda.address,
-              userAddress: transaction.toAddress,
-              transaction,
-              role: ROLE_NOTI.BDA,
-              commissionFee: bda?.commissionFee,
-            }),
-            this.pushNotificationUser(NotificationType.N15, {
-              // Direct Referrer
-              toAddress: referrerDirect.address,
-              userAddress: transaction.toAddress,
-              transaction,
-              role: ROLE_NOTI.DIRECT_REFERRE,
-              commissionFee: referrerDirect?.commissionFee,
-            }),
-          ]);
-        }
-
-        return transaction;
-      },
-    );
-  }
-
-  async updateUserAfterBuyingNft(data: {
-    transaction: TransactionDocument;
-    nft: NFTDocument;
-    event?: EventDocument;
-    session: any;
-  }) {
-    const { transaction, session } = data;
-    let personalVolumeReferrer = new BigNumber(0);
-    const promise = [];
-    // update personal volume
-    const userInfo = await this.findUserByAddress(transaction.toAddress);
-
-    // update volume of user
-    userInfo.volume = new BigNumber(transaction?.revenue.toString())
-      .plus(userInfo?.volume.toString() || 0)
-      .toString() as any;
-
-    // check user to become BDA and update children after user become BDA
-    if (
-      userInfo.userType === UserType.COMMON &&
-      ((!userInfo.haveReceivedBlackFromAdmin &&
-        new BigNumber(userInfo.oldPersonalVolume.toString()).gte(
-          CONFIG_TO_BECOME_BDA,
-        )) ||
-        new BigNumber(userInfo.personalVolume.toString()).gte(
-          CONFIG_TO_BECOME_BDA,
-        ))
-    ) {
-      const childrenUser = this.updateUserBecomeBDA(userInfo, session);
-      userInfo.userType = UserType.BDA;
-      if (
-        new BigNumber(userInfo.personalVolume.toString()).gte(
-          CONFIG_TO_BECOME_BDA,
-        )
-      ) {
-        userInfo.haveReceivedBlackFromAdmin = false;
-        // ADD NOTIFICATION ADMIN
-        promise.push(
-          this.pushNotificationUser(
-            NotificationType.N3,
-            {
-              toAddress: userInfo.address,
-            },
-            session,
-          ),
-          this.pushNotificationAdmin(
-            NotificationType.P3,
-            {
-              toAddress: userInfo.address,
-            },
-            session,
-          ),
-        );
-      }
-
-      promise.push(...childrenUser);
-    }
-
-    promise.push(userInfo.save({ session }));
-
-    // check user who has referrer, bda or not
-    if (!userInfo?.referrer || !userInfo?.originator) {
-      return promise;
-    }
-
-    // get referrer user model
-    const referrerInfo = await this.findUserByAddress(userInfo.referrer);
-
-    // get originator user model
-    const originatorInfo = await this.findUserByAddress(userInfo.originator);
-    // update personal volume
-    personalVolumeReferrer = new BigNumber(
-      transaction?.revenue.toString(),
-    ).plus(referrerInfo.personalVolume.toString());
-    referrerInfo.personalVolume = personalVolumeReferrer.toString() as any;
-    const oldPersonalVolumeReferrer = new BigNumber(
-      transaction?.revenue.toString(),
-    ).plus(referrerInfo.oldPersonalVolume.toString());
-    referrerInfo.oldPersonalVolume =
-      oldPersonalVolumeReferrer.toString() as any;
-    // update personal token sold
-    referrerInfo.personalTokenSold += transaction.quantity;
-
-    // update commission of referrer , bda
-    if (transaction.affiliateInfor.bda.address === originatorInfo.address) {
-      originatorInfo.commission = new BigNumber(
-        transaction.affiliateInfor.bda.commissionFee.toString(),
-      )
-        .plus(originatorInfo.commission.toString())
-        .toString() as any;
-    }
-
-    if (
-      transaction.affiliateInfor.referrerDirect.address === referrerInfo.address
-    ) {
-      referrerInfo.commission = new BigNumber(
-        transaction.affiliateInfor.referrerDirect.commissionFee.toString(),
-      )
-        .plus(referrerInfo.commission.toString())
-        .toString() as any;
-    }
-
-    // check referrer of user to become BDA and update children after user become BDA
-    const { status, message } = await this.canBecomeBDA(referrerInfo);
-
-    if (message) {
-      // promise.push(
-      //   this.pushNotificationUser(
-      //     message,
-      //     { toAddress: referrerInfo.address },
-      //     session,
-      //   ),
-      // );
-      // ADD NOTIFICATION ADMIN
-    }
-
-    if (
-      referrerInfo.userType === UserType.COMMON &&
-      new BigNumber(referrerInfo.personalVolume.toString()).gte(
-        CONFIG_TO_BECOME_BDA,
-      )
-    ) {
-      referrerInfo.haveReceivedBlackFromAdmin = false;
-    }
-    // Noti BDA
-    if (status) {
-      const childrenReferrer = this.updateUserBecomeBDA(referrerInfo, session);
-      referrerInfo.userType = UserType.BDA;
-      referrerInfo.haveReceivedBlackFromAdmin = false;
-      promise.push(...childrenReferrer);
-      promise.push(
-        this.pushNotificationUser(
-          NotificationType.N3,
-          { toAddress: referrerInfo.address },
-          session,
-        ),
-        this.pushNotificationAdmin(
-          NotificationType.P3,
-          {
-            toAddress: referrerInfo.address,
-          },
-          session,
-        ),
-      );
-    }
-
-    const result = await Promise.all(promise);
-    return result;
-  }
-
-  async canBecomeBDA(user: UserDocument) {
-    const result = { status: false, message: '' };
-    const quantityOfToken = await this.countingOwnedTokenByUser(user);
-    if (quantityOfToken === 0) {
-      result.message = new BigNumber(user.personalVolume.toString()).gte(
-        CONFIG_TO_BECOME_BDA,
-      )
-        ? NotificationType.N7
-        : '';
-      return result;
-    }
-    result.status =
-      user.userType === UserType.COMMON &&
-      new BigNumber(user.personalVolume.toString()).gte(CONFIG_TO_BECOME_BDA);
-    return result;
   }
 
   async countingOwnedTokenByUser(user: UserDocument) {
@@ -1273,19 +744,13 @@ export class CommonService implements OnModuleInit {
           const nft = await this.nftModel.findById(transaction.nft.id);
 
           // Update NFT: status, token id, total supply, total minted
-          await this.updateNFT({
-            transaction,
-            nft,
-            session,
-          });
+       
           // update user info when admin mints Black NFT to one
 
         });
         await session.endSession();
         // push noti
-        await this.pushNotificationUser(NotificationType.N12, {
-          toAddress: transaction.toAddress,
-        });
+
         return transaction;
       },
     );
@@ -1367,241 +832,6 @@ export class CommonService implements OnModuleInit {
     );
   }
 
-  async pushNotificationUser(
-    type: NotificationType,
-    data: PushNotificationDto,
-    session?: any,
-  ) {
-    try {
-      const {
-        toAddress,
-        userAddress,
-        referralAddress,
-        mintingEvent,
-        transaction,
-        role,
-        commissionFee,
-        recoverTokenId,
-      } = data;
-      this.logger.log(`pushNotificationUser(): Push notification ${type}`);
-
-      const createNotification = new this.notificationModel({
-        addressRead: [],
-        address: toAddress,
-      });
-
-      let socketToRoom: any = toAddress;
-      let content;
-      switch (type) {
-        case NotificationType.N1:
-        case NotificationType.N2:
-        case NotificationType.N3:
-        case NotificationType.N4:
-        case NotificationType.N5:
-        case NotificationType.N6:
-        case NotificationType.N7:
-        case NotificationType.N12: {
-          content = Content[type];
-          break;
-        }
-        case NotificationType.N8:
-        case NotificationType.N9: {
-          if (mintingEvent.type === EventType.WHITE_LIST) {
-            socketToRoom = mintingEvent.whitelistInfo.address;
-            createNotification.receiverAddresses =
-              mintingEvent.whitelistInfo.address;
-          } else {
-            createNotification.address = SOCKET_ROOM.USER;
-            socketToRoom = SOCKET_ROOM.USER;
-          }
-          const eventName = Utils.highlight(mintingEvent.name);
-          content = Content[type].replace('%eventName%', eventName);
-          createNotification.mintingEvent = this.convertToSimpleEvent(
-            mintingEvent,
-            null,
-          );
-          break;
-        }
-        case NotificationType.N10:
-        case NotificationType.N11: {
-          createNotification.address = socketToRoom;
-         
-          break;
-        }
-        case NotificationType.N13: {
-          content = Content.N13.replace(
-            '%userAddress%',
-            Utils.highlight(Utils.getShortAddress(userAddress)),
-          );
-          break;
-        }
-        case NotificationType.N14: {
-          content = Content.N14.replace(
-            '%userAddress%',
-            Utils.highlight(Utils.getShortAddress(userAddress)),
-          ).replace(
-            '%referralAddress%',
-            Utils.highlight(Utils.getShortAddress(referralAddress)),
-          );
-          break;
-        }
-        case NotificationType.N15: {
-          createNotification.transaction = transaction;
-          content = Content.N15.replace(
-            '%commissionFee%',
-            Utils.highlight(Utils.formatCurrency(commissionFee)),
-          )
-            .replace(
-              '%userAddress%',
-              Utils.highlight(Utils.getShortAddress(userAddress)),
-            )
-            .replace('%role%', Utils.highlight(role));
-          break;
-        }
-        case NotificationType.N16: {
-          createNotification.transaction = transaction;
-          content = Content.N16.replace(
-            '%invalidNftName%',
-            Utils.highlight(transaction.nft.name),
-          )
-            .replace(
-              '%invalidTokenId%',
-              Utils.highlight(transaction.faultyToken),
-            )
-            .replace('%recoverNftName%', Utils.highlight(transaction.nft.name))
-            .replace('%recoverTokenId%', Utils.highlight(recoverTokenId));
-          break;
-        }
-        case NotificationType.N17: {
-          createNotification.transaction = transaction;
-          content = Content.N17.replace(
-            '%invalidNftName%',
-            Utils.highlight(transaction.nft.name),
-          ).replace(
-            '%invalidTokenId%',
-            Utils.highlight(transaction.faultyToken),
-          );
-          break;
-        }
-        default: {
-          this.logger.error('pushNotificationUser(): wrong notification type');
-          return;
-        }
-      }
-      createNotification.type = type;
-      createNotification.content = content;
-      const notification = await createNotification.save({ session });
-      this.logger.debug(
-        `pushNotificationUser(): push socket to room ${socketToRoom}`,
-      );
-      // push to socket
-      this.socketGateway.server
-        .to(socketToRoom)
-        .emit(SOCKET_EVENT.NOTIFICATION, notification);
-    } catch (error) {
-      this.logger.error(`pushNotificationUser(): fail`, error);
-      this.logError(error);
-    }
-  }
-
-  async pushNotificationAdmin(
-    type: NotificationType,
-    data: PushNotificationDto,
-    session?: any,
-  ) {
-    try {
-      const {
-        toAddress,
-        mintingEvent,
-        transaction,
-        nft,
-      } = data;
-      this.logger.log(`pushNotificationAdmin(): Push notification ${type}`);
-      let eventName;
-      let content;
-      const createNotification = new this.notificationModel({ type });
-      switch (type) {
-        case NotificationType.P1:
-          const quantity = Utils.highlight(transaction.quantity);
-          const nftName = Utils.highlight(transaction.nft.name);
-          const unitPrice = Utils.highlight(
-            Utils.formatCurrency(transaction.event.category.unitPrice),
-          );
-          const address = Utils.highlight(
-            Utils.getShortAddress(transaction.toAddress),
-          );
-          eventName = Utils.highlight(transaction.event.name);
-          content = Content.P1.replace('%quantity%', quantity)
-            .replace('%nftName%', nftName)
-            .replace('%unitPrice%', unitPrice)
-            .replace('%address%', address)
-            .replace('%eventName%', eventName);
-          createNotification.nft = nft;
-          createNotification.mintingEvent = transaction.event;
-          break;
-        case NotificationType.P2:
-          content = Content.P2.replace('%nftName%', nft.name);
-          createNotification.nft = nft;
-          break;
-        case NotificationType.P3:
-          content = Content.P3.replace(
-            '%toAddress%',
-            Utils.highlight(Utils.getShortAddress(toAddress)),
-          );
-          createNotification.toAddress = toAddress;
-          break;
-        case NotificationType.P4:
-          eventName = Utils.highlight(mintingEvent.name);
-          content = Content.P4.replace('%eventName%', eventName);
-          createNotification.mintingEvent = this.convertToSimpleEvent(
-            mintingEvent,
-            null,
-          );
-          break;
-        case NotificationType.P5:
-        case NotificationType.P6:
-          eventName = Utils.highlight(mintingEvent.name);
-          content = Content[type].replace('%eventName%', eventName);
-          createNotification.mintingEvent = this.convertToSimpleEvent(
-            mintingEvent,
-            null,
-          );
-          break;
-        case NotificationType.P7:
-        case NotificationType.P8:
-        case NotificationType.P9:
-        case NotificationType.P10:
-        case NotificationType.P13:
-          content = Content[type].replace('%eventName%', eventName);
-   
-          break;
-
-        case NotificationType.P11:
-          content = Content.P11;
-          break;
-        case NotificationType.P12:
-          
-    
-          break;
-        default:
-          this.logger.error('pushNotificationAdmin(): wrong notification type');
-          return;
-      }
-      const receiverAddresses = await this.getReceiverAddressesByType(type);
-      createNotification.content = content;
-      createNotification.receiverAddresses = receiverAddresses;
-      const notification = await createNotification.save({ session });
-      this.logger.debug(
-        `pushNotificationAdmin(): push socket to list receiver ${receiverAddresses}`,
-      );
-      this.socketGateway.server
-        .to(receiverAddresses)
-        .emit(SOCKET_EVENT.NOTIFICATION, notification);
-    } catch (error) {
-      this.logger.error(`pushNotificationAdmin(): fail`, error);
-      this.logError(error);
-    }
-  }
 
   async getReceiverAddressesByType(type: NotificationType) {
     switch (type) {
@@ -1648,188 +878,6 @@ export class CommonService implements OnModuleInit {
     return Utils.toDecimal(
       new BigNumber(unitPrice).multipliedBy(currency.usd).toString(),
     );
-  }
-
-  async getFilterDataToSyncTransaction(
-    tokenStandard: TokenStandard,
-    numBlockPerSync: number,
-    numBlockSkipRangeToLatest: number,
-  ) {
-    const web3Gateway = new Web3Gateway();
-    const latestBlock = await web3Gateway.getLatestBlock();
-    const transactionTransferSyncs = await this.transactionTransferSyncModel
-      .find({
-        type: tokenStandard,
-      })
-      .sort({ toBlock: -1 })
-      .limit(1);
-
-    let fromBlock = 0;
-    if (tokenStandard === TokenStandard.ERC_721) {
-      fromBlock = Number(process.env.CONTRACT_ERC_721_FIRST_BLOCK);
-    } else if (tokenStandard === TokenStandard.ERC_1155) {
-      fromBlock = Number(process.env.CONTRACT_ERC_1155_FIRST_BLOCK);
-    }
-    if (transactionTransferSyncs.length > 0) {
-      fromBlock = transactionTransferSyncs[0].toBlock + 1;
-    }
-    let toBlock = fromBlock + numBlockPerSync;
-    if (toBlock >= latestBlock) {
-      toBlock = latestBlock;
-    }
-    // Rangle fromBlock -> toBlock always is numBlockSkipRangeToLatest
-    if (toBlock - fromBlock < numBlockSkipRangeToLatest) {
-      fromBlock = toBlock - numBlockSkipRangeToLatest;
-    }
-
-    return { latestBlock, fromBlock, toBlock };
-  }
-
-  createTransactionTransferModel(
-    tokenStandard: TokenStandard,
-    event: Web3PastEvent,
-  ) {
-    const values = event.returnValues;
-    if (tokenStandard === TokenStandard.ERC_721) {
-      const fromAddress = values[0];
-      const toAddress = values[1];
-      const tokenId = values[2];
-      const transactionTransfer = new this.transactionTransferModel({
-        hash: event.transactionHash,
-        logIndex: event.logIndex,
-        type: tokenStandard,
-        fromAddress,
-        toAddress,
-        tokenId,
-        blockNumber: event.blockNumber,
-        quantity: 1,
-        status: TransactionTransferStatus.PENDING,
-      });
-      return transactionTransfer;
-    } else if (tokenStandard === TokenStandard.ERC_1155) {
-      const fromAddress = values[1];
-      const toAddress = values[2];
-      const tokenId = values[3];
-      const quantity = values[4];
-      const transactionTransfer = new this.transactionTransferModel({
-        hash: event.transactionHash,
-        logIndex: event.logIndex,
-        type: tokenStandard,
-        fromAddress,
-        toAddress,
-        tokenId,
-        blockNumber: event.blockNumber,
-        quantity,
-        status: TransactionTransferStatus.PENDING,
-      });
-      return transactionTransfer;
-    }
-  }
-
-  async createTransactionTransfer(data: {
-    tokenStandard: TokenStandard;
-    fromBlock: number;
-    toBlock: number;
-    latestBlock: number;
-  }) {
-    const { tokenStandard, fromBlock, toBlock, latestBlock } = data;
-    const web3Gateway = new Web3Gateway();
-
-    // Get past events
-    let events: Web3PastEvent[] = [];
-    if (tokenStandard === TokenStandard.ERC_721) {
-      events = await web3Gateway.getPastEvents721(
-        Contract.EVENT.TRANSFER,
-        fromBlock,
-        toBlock,
-      );
-    }
-    const transactionTransfers = [];
-    for (let index = 0; index < events.length; index++) {
-      const event = events[index];
-      const transactionTransferExist = await this.transactionTransferModel
-        .findOne({
-          hash: event.transactionHash,
-          logIndex: event.logIndex,
-        })
-        .lean();
-      if (!transactionTransferExist) {
-        const transactionTransfer = this.createTransactionTransferModel(
-          tokenStandard,
-          event,
-        );
-        transactionTransfers.push(transactionTransfer);
-      }
-    }
-
-    // Insert db
-    const session = await this.connection.startSession();
-    await session.withTransaction(async () => {
-      const promises = [];
-
-      // Re-sync one block
-      if (latestBlock === -1) {
-        promises.push(
-          this.transactionTransferModel.deleteMany({
-            blockNumber: fromBlock,
-          }),
-        );
-      } else {
-        // Add transaction transfer sync
-        const transactionTransferSync = new this.transactionTransferSyncModel({
-          type: tokenStandard,
-          fromBlock,
-          toBlock,
-          latestBlock,
-          totalTransactions: events.length,
-          totalTransactionSyncs: transactionTransfers.length,
-        });
-        promises.push(transactionTransferSync.save({ session }));
-      }
-
-      // Add transaction transfer
-      promises.push(
-        this.transactionTransferModel.insertMany(transactionTransfers, {
-          session,
-        }),
-      );
-
-      await Promise.all(promises);
-    });
-    await session.endSession();
-
-    return transactionTransfers;
-  }
-
-  async syncTransactionTransfer(
-    tokenStandard: TokenStandard,
-    numBlockPerSync = 1000,
-    numBlockSkipRangeToLatest = 100,
-  ) {
-    // Get data
-    const { latestBlock, fromBlock, toBlock } =
-      await this.getFilterDataToSyncTransaction(
-        tokenStandard,
-        numBlockPerSync,
-        numBlockSkipRangeToLatest,
-      );
-    if (fromBlock >= toBlock) {
-      this.logger.debug(
-        `syncTransactionTransfer(): ${tokenStandard} synced. Current block = ${fromBlock}, Latest block = ${latestBlock}`,
-      );
-      return;
-    }
-    this.logger.log(
-      `Sync ${tokenStandard} from block ${fromBlock} -> ${toBlock}`,
-    );
-    const transactionTransfers = await this.createTransactionTransfer({
-      tokenStandard,
-      fromBlock,
-      toBlock,
-      latestBlock,
-    });
-
-    return transactionTransfers;
   }
 
   convertToSimpleCurrency(currency: Currency) {
@@ -1912,38 +960,6 @@ export class CommonService implements OnModuleInit {
     ];
   }
 
-  async findEventById(id: any) {
-    const event = await this.eventModel.findById(id);
-    if (!event) {
-      throw ApiError(ErrorCode.NO_DATA_EXISTS, 'Event not found');
-    }
-    if (event.isDeleted) {
-      throw ApiError(ErrorCode.NO_DATA_EXISTS, 'Event is not exists');
-    }
-    return event;
-  }
-
-
-  getCategoryInEvent(event: EventDocument, nftId: any) {
-    for (const itemCategory of event.categories) {
-      if (itemCategory.nftId.toString() === nftId.toString()) {
-        return itemCategory;
-      }
-    }
-
-    throw ApiError(ErrorCode.INVALID_DATA, 'Category does not contain nftId');
-  }
-
-  convertToSimpleEvent(event: EventDocument, category: CategoryInEvent) {
-    const simpleEvent: SimpleEvent = {
-      id: event._id,
-      category,
-      creatorAddress: event.creatorAddress,
-      name: event.name,
-      imgUrl: event.imgUrl,
-    };
-    return simpleEvent;
-  }
 
   validateWhiteListWhenPurchase(
     whiteListAddress: string[],
@@ -1960,33 +976,6 @@ export class CommonService implements OnModuleInit {
     }
   }
 
-  async getEventInfoByNFTId(id: string, requestData: any) {
-    const pipe = [
-      {
-        $match: {
-          $and: [
-            { status: { $in: [EventStatus.LIVE, EventStatus.COMING_SOON] } },
-            { 'categories.nftId': Utils.toObjectId(id) },
-          ],
-        },
-      },
-      {
-        $addFields: {
-          totalQuantityForSale: {
-            $sum: '$categories.quantityForSale',
-          },
-          totalMinted: {
-            $sum: '$categories.totalMinted',
-          },
-        },
-      },
-    ];
-    return Utils.aggregatePaginate(this.eventModel, pipe, requestData);
-  }
-  //            A                    pathId[]
-  //         A1   A2             A1: pathId[A] --- A2: pathId[A]
-  //     A11         A21         A11: pathId[A,A1] --- A21: pathId[A,A2]
-  // A111   A112   A211  A212    A111, A112: pathId[A,A1,A11] --- A211, A212: pathId[A,A2,A21]
 
   async getChildrenOrDirectRefereeFromAddress(
     address: string,
@@ -2061,112 +1050,10 @@ export class CommonService implements OnModuleInit {
     return result;
   }
 
-  async getRecoverDataSignature(data: {
-    collection: string;
-    receiver: string;
-    tokenId: number;
-    nft: NFTDocument;
-    transactionId: string | object;
-    signer: {
-      address: string;
-      privateKey: any;
-    };
-  }) {
-    const web3Gateway = new Web3Gateway();
-    const { collection, receiver, nft, transactionId, signer, tokenId } = data;
-    const dataSign = [
-      collection,
-      receiver,
-      tokenId,
-      Utils.convertToBytes(nft.id),
-      Utils.convertToBytes(transactionId.toString()),
-      `${process.env.BASE_URI}${process.env.NFT_INVALID}`,
-      `${process.env.BASE_URI}${nft.id}`,
-    ];
-    const signatureRecover = await web3Gateway.sign(
-      dataSign,
-      signer.privateKey,
-    );
-    const signature = <TransactionSignature>{
-      data: dataSign,
-      address: signer.address,
-      hash: signatureRecover,
-      dataRequest: [
-        [tokenId],
-        [collection, receiver],
-        [
-          Utils.convertToBytes(nft.id),
-          Utils.convertToBytes(transactionId.toString()),
-          signatureRecover,
-        ],
-        [
-          `${process.env.BASE_URI}${process.env.NFT_INVALID}`,
-          `${process.env.BASE_URI}${nft.id}`,
-        ],
-      ],
-    };
-    return signature;
-  }
-
   async getBDAOfUser(originator: string) {
     const isBda = await this.checkBda(originator);
     if (isBda) return originator;
     return;
-  }
-
-
-
-  async updateEventBuyNft(data: {
-    transaction: TransactionDocument;
-    nft: NFTDocument;
-    event?: EventDocument;
-    session: any;
-  }) {
-    const { transaction, nft, event, session } = data;
-    const promises = [];
-    if (transaction.status === TransactionStatus.SUCCESS) {
-      const update = {};
-      const { totalNftForSale, totalNftMinted } = this.checkEndEventBuy(event);
-      if (totalNftForSale - totalNftMinted <= transaction.quantity) {
-        update['$set'] = {
-          status: EventStatus.END,
-          endTimeOrigin: event.endDate,
-          endDate: new Date(),
-        };
-        this.logger.debug(`updateNFT(): event ${event.id} is ended`);
-        // push noti
-        promises.push(
-          this.pushNotificationAdmin(
-            NotificationType.P5,
-            {
-              mintingEvent: event,
-            },
-            session,
-          ),
-        );
-      }
-
-      update['$inc'] = {
-        totalRevenue: +transaction.revenue,
-        adminEarnings: +transaction.adminEarning,
-        'categories.$.totalMinted': +transaction.quantity,
-      };
-      promises.push(
-        this.eventModel.findOneAndUpdate(
-          {
-            _id: event.id,
-            status: EventStatus.LIVE,
-            'categories.nftId': new ObjectID(nft.id),
-          },
-          update,
-          {
-            session: session,
-            new: true,
-          },
-        ),
-      );
-      await Promise.all(promises);
-    }
   }
 
   async checkBda(address: string) {
@@ -2177,29 +1064,6 @@ export class CommonService implements OnModuleInit {
     } catch (error) {
       return false;
     }
-  }
-
-
-  async checkOffSaleNft(
-    nftId: string,
-    event: EventDocument,
-    transactionQuantity: number,
-  ) {
-    const listEvent = await this.eventModel
-      .find({
-        'categories.nftId': ObjectID(nftId),
-        _id: { $ne: event.id },
-        status: EventStatus.LIVE,
-      })
-      .lean();
-    const category = this.getCategoryInEvent(event, nftId);
-    const nftRemainInCategory = category.quantityForSale - category.totalMinted;
-    if (
-      listEvent.length === 0 &&
-      nftRemainInCategory - transactionQuantity === 0
-    )
-      return true;
-    return false;
   }
 
   async singleCandidateKyc(
@@ -2220,23 +1084,6 @@ export class CommonService implements OnModuleInit {
       throw new Error(response.statusText);
     }
   }
-
-
-  checkEndEventBuy(event: EventDocument) {
-    const totalNftForSale = event.categories.reduce(
-      (acc, value) => acc + value.quantityForSale,
-      0,
-    );
-    const totalNftMinted = event.categories.reduce(
-      (acc, value) => acc + value.totalMinted,
-      0,
-    );
-    return {
-      totalNftForSale,
-      totalNftMinted,
-    };
-  }
-
   
 
   sortArrayOfObject(values: any[], requestSort: any) {
@@ -2247,40 +1094,6 @@ export class CommonService implements OnModuleInit {
         sort[field] === 'asc' ? a[field] - b[field] : b[field] - a[field],
       );
     });
-  }
-
-  async getDataSignatureAdminMint(
-    receiver: string,
-    nftId: string,
-    transactionId,
-  ) {
-    const dataSign = [
-      process.env.CONTRACT_ERC_721,
-      receiver,
-      Utils.convertToBytes(nftId),
-      Utils.convertToBytes(transactionId.toString()),
-      `${process.env.BASE_URI}${nftId}`,
-    ];
-    const web3Gateway = new Web3Gateway();
-    const signer = await this.findSigner();
-    const signatureAdminMint = await web3Gateway.sign(
-      dataSign,
-      signer.privateKey,
-    );
-    const signature = <TransactionSignature>{
-      data: dataSign,
-      address: signer.address,
-      hash: signatureAdminMint,
-      dataRequest: [
-        process.env.CONTRACT_ERC_721, // Address
-        receiver,
-        Utils.convertToBytes(nftId),
-        Utils.convertToBytes(transactionId.toString()),
-        signatureAdminMint,
-        `${process.env.BASE_URI}${nftId}`,
-      ],
-    };
-    return signature;
   }
 
   async userWithRoleCompany() {
@@ -2464,88 +1277,6 @@ export class CommonService implements OnModuleInit {
         new: true,
       },
     );
-  }
-
-  async createTransactionAdminAction(
-    data: {
-      account: string;
-      action: string;
-      permissions: string[];
-      adminName?: string;
-    },
-    session?: any,
-  ) {
-    const { account, permissions, action, adminName } = data;
-
-    const transactionId = Utils.createObjectId();
-
-    const signature = await this.getSignatureAdminAction(
-      account,
-      action,
-      permissions,
-      transactionId,
-    );
-    const typeTransactionMapper = {
-      [AdminActions.ADD_ADMIN]: TransactionType.ADMIN_SETTING,
-      [AdminActions.UPDATE_ADMIN]: TransactionType.ADMIN_UPDATE,
-      [AdminActions.ACTIVATE]: TransactionType.ADMIN_ACTIVE,
-      [AdminActions.DEACTIVATE]: TransactionType.ADMIN_DEACTIVE,
-      [AdminActions.DELETE_ADMIN]: TransactionType.ADMIN_DELETE,
-    };
-    return this.transactionModel.create(
-      [
-        {
-          _id: transactionId,
-          type: typeTransactionMapper[action],
-          toAddress: account,
-          status: TransactionStatus.DRAFT,
-          signature: signature,
-          dataAdminTemp: {
-            adminName,
-            address: account,
-            permissions,
-            status: UserStatus.DRAFT,
-            role: UserRole.ADMIN,
-            isHavingAction: false,
-          },
-        },
-      ],
-      { session },
-    );
-  }
-
-  async getSignatureAdminAction(
-    account: string,
-    action: string,
-    permissions: string[],
-    transactionId: object,
-  ) {
-    const permissionMapper = permissions.map(
-      (item) => process.env[AdminPermissions[item]],
-    );
-    const actionMapper = process.env[AdminActions[action]];
-    const dataSign = [
-      account,
-      actionMapper,
-      permissionMapper,
-      Utils.convertToBytes(transactionId.toString()),
-    ];
-    const web3Gateway = new Web3Gateway();
-    const signer = await this.findSigner();
-    const hash = await web3Gateway.sign(dataSign, signer.privateKey);
-    const signature = <TransactionSignature>{
-      data: dataSign,
-      address: signer.address,
-      hash: hash,
-      dataRequest: [
-        account,
-        actionMapper,
-        permissionMapper,
-        Utils.convertToBytes(transactionId.toString()),
-        hash,
-      ],
-    };
-    return signature;
   }
 
   async updateAdminAction(
@@ -2942,5 +1673,14 @@ export class CommonService implements OnModuleInit {
       requestData,
     );
     return result;
+  }
+
+  getProvider(networkId: string) {
+    if (networkId === process.env.CHAIN_ID) {
+      return ethers.getDefaultProvider(
+        process.env.CHAIN_RPC_URL
+      );
+    }
+      
   }
 }

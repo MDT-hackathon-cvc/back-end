@@ -30,13 +30,6 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // Validate address
-  // const web3Gateway = new Web3Gateway();
-  // const address721 = await web3Gateway.getAddress721();
-  // console.log(`Address 721 = ${address721}`);
-  // if (address721.toLowerCase() !== process.env.CONTRACT_ERC_721.toLowerCase()) {
-  //   throw new Error(`Contract address 721 wrong`);
-  // }
 
   // Swagger
   if (process.env.NODE_ENV === 'dev') {

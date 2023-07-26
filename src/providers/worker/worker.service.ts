@@ -2,12 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { WorkerDataDto } from './dto/worker-data.dto';
-import { Contract, THOUSAND } from 'src/common/constants';
+import { Contract } from 'src/common/constants';
 import { CommonService } from 'src/common-service/common.service';
 import { TransactionStatus } from 'src/schemas/Transaction.schema';
 import { TransferDto } from './dto/transfer.dto';
 import { AdminMintDto } from './dto/admin-mint.dto';
-import { BuyNFTDto } from './dto/buy-nft.dto';
 import { Utils } from 'src/common/utils';
 import { NFT, NFTDocument, Owner, TokenStandard } from 'src/schemas/NFT.schema';
 import { SyncTransactionDto } from './dto/sync-transaction.dto';
@@ -17,14 +16,10 @@ import {
 } from 'src/schemas/TransactionTransfer.schema';
 import { User, UserDocument, UserRole } from 'src/schemas/User.schema';
 import mongoose from 'mongoose';
-import { RedemptionFromWorkerDto } from './dto/redemption-from-worker.dto';
 import { EventFromWorkerDto } from './dto/event-from-worker.dto';
-import { EventLockDto } from './dto/event-lock.dto';
 import { PermissionAdmin } from './dto/permission-admin.dto';
-import { ClaimedDto } from './dto/claimed.dto';
 import { TransactionsService } from 'src/transactions/transactions.service';
 import { DepositDto } from './dto/deposit.dto';
-import { RecoverMintedDto } from './dto/recover-minted.dto';
 const jwt = require('jsonwebtoken');
 
 @Injectable()
@@ -285,16 +280,6 @@ export class WorkerService {
     return { token };
   }
 
-  async syncTransactionsInBlock(requestData: SyncTransactionDto) {
-    const transactions = await this.commonService.createTransactionTransfer({
-      tokenStandard: requestData.type,
-      fromBlock: requestData.blockNumber,
-      toBlock: requestData.blockNumber,
-      latestBlock: -1,
-    });
-
-    return transactions;
-  }
 
   async receivedData(requestData: WorkerDataDto) {
     switch (requestData.eventType) {
@@ -311,36 +296,14 @@ export class WorkerService {
           },
           dataAdminMint.tokenIds,
         );
-      case Contract.EVENT.MINT_NFT:
-        // BUY NFT
-        const dataMint = requestData.data as BuyNFTDto;
-        const tokenIds = dataMint.tokenIds ? dataMint.tokenIds : [];
-        return this.commonService.buyNFT(
-          Utils.convertBytesToString(dataMint.transactionId),
-          {
-            hash: requestData.hash,
-            message: '',
-            status: TransactionStatus.SUCCESS,
-            isFromWorker: true,
-          },
-          tokenIds,
-        );
+      
       case Contract.EVENT.TRANSFER:
         // TRANSFER 721
         const data = requestData.data as TransferDto;
         data.hash = requestData.hash;
         return this.commonService.transferNFT721(data);
       
-      case Contract.EVENT.EVENT_CANCELED:
-        const dataEvent = requestData.data as EventFromWorkerDto;
-        const transactionEvent = await this.commonService.findTransactionById(
-          Utils.convertBytesToString(dataEvent.transactionId),
-        );
-        return this.commonService.cancelEvent(transactionEvent, {
-          isFromWorker: true,
-          hash: requestData.hash,
-          status: TransactionStatus.SUCCESS,
-        });
+      
       case Contract.EVENT.PERMISSION_UPDATE:
         const dataPermissionAdmin = requestData.data as PermissionAdmin;
         const transaction = await this.commonService.findTransactionById(

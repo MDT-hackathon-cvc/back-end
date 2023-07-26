@@ -104,6 +104,7 @@ export const BlockChain = {
     BSC: [56, 97],
     ETH: [1, 3, 4, 5, 42],
     POLYGON: [137, 80001],
+    CVC: [5555]
   },
 };
 

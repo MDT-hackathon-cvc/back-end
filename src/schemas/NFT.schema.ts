@@ -3,7 +3,6 @@ import { Document } from 'mongoose';
 import * as mongoose from 'mongoose';
 const paginate = require('mongoose-paginate-v2');
 const aggregatePaginate = require('mongoose-aggregate-paginate-v2');
-import { EventOfNFT } from './Event.schema';
 
 export type NFTDocument = NFT & Document;
 
@@ -68,9 +67,6 @@ export class Owner {
 
   @Prop({ default: false })
   isAddressAdmin: boolean;
-
-  @Prop({ type: EventOfNFT })
-  event: EventOfNFT;
 
   @Prop()
   mintedHash: string;

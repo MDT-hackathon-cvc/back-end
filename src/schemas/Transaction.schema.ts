@@ -4,7 +4,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import * as mongoose from 'mongoose';
 import { Document } from 'mongoose';
 import { Contract } from 'src/common/constants';
-import { SimpleEvent } from './Event.schema';
 import { SimpleNFT } from './NFT.schema';
 import { UserRole, UserStatus } from './User.schema';
 const paginate = require('mongoose-paginate-v2');
@@ -142,9 +141,6 @@ export class Transaction {
 
   @Prop({ type: TransactionSignature })
   signature: TransactionSignature;
-
-  @Prop({ type: SimpleEvent })
-  event: SimpleEvent;
 
   @Prop({ type: AffiliateInfor, default: {}, _id: false })
   affiliateInfor?: AffiliateInfor;

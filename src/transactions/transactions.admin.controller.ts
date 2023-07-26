@@ -27,11 +27,6 @@ import { TransactionsAdminService } from './transactions.admin.service';
 export class TransactionsAdminController {
   constructor(private readonly transactionsService: TransactionsAdminService) {}
 
-  @Get()
-  findAll(@Query() requestData: FindTransactionDto) {
-    return this.transactionsService.findAll(requestData);
-  }
-
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.transactionsService.findOne(id);
@@ -40,13 +35,5 @@ export class TransactionsAdminController {
   @Post('/recover')
   recoverMinting(@Request() req, @Body() body: RecoverTransactionDto) {
     return this.transactionsService.createRecoverTransaction(req.user, body);
-  }
-
-  @Post('/validate')
-  validateRecoverMinting(@Request() req, @Body() body: RecoverTransactionDto) {
-    return this.transactionsService.validateFieldsWhenRecovering(
-      req.user,
-      body,
-    );
   }
 }
