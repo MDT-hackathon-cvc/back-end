@@ -30,10 +30,8 @@ import {
   TokenStandard,
 } from 'src/schemas/NFT.schema';
 import {
-  AdminTemp,
   Transaction,
   TransactionDocument,
-  TransactionSignature,
   TransactionStatus,
   TransactionType,
 } from 'src/schemas/Transaction.schema';
@@ -554,10 +552,7 @@ export class CommonService implements OnModuleInit {
           // Update Transaction: status
           transaction.status = TransactionStatus.SUCCESS;
           transaction.hash = requestData.hash;
-          transaction.message = requestData?.message || '';
-          if (requestData.isFromWorker) {
-            transaction.syncedAt = new Date();
-          }
+          
           promises.push(transaction.save({ session }));
           const results = await Promise.all(promises);
           this.logPromise(promises, results);
@@ -584,10 +579,7 @@ export class CommonService implements OnModuleInit {
       this.logger.log(
         `checkTransactionAlreadyCompleted(): ${transaction.id} is already completed`,
       );
-      if (isFromWorker) {
-        transaction.syncedAt = new Date();
-        transaction.save();
-      }
+      
       return {
         isAlreadyCompleted: true,
       };
@@ -734,11 +726,7 @@ export class CommonService implements OnModuleInit {
           // Update Transaction: status
           transaction.status = TransactionStatus.SUCCESS;
           transaction.hash = requestData.hash;
-          transaction.message = requestData.message;
-          transaction.tokenIds = tokenIds;
-          if (requestData.isFromWorker) {
-            transaction.syncedAt = new Date();
-          }
+          
           promises.push(transaction.save({ session }));
 
           const nft = await this.nftModel.findById(transaction.nft.id);
@@ -909,9 +897,7 @@ export class CommonService implements OnModuleInit {
       name: nft.name,
       code: nft.code,
       slug: nft.slug,
-      token: this.convertToSimpleToken(nft),
       image: nft.image,
-      description: nft.description,
     };
     return simpleNFT;
   }
@@ -1303,10 +1289,7 @@ export class CommonService implements OnModuleInit {
           // Update Transaction: status
           transaction.status = TransactionStatus.SUCCESS;
           transaction.hash = requestData.hash;
-          transaction.message = requestData?.message || '';
-          if (requestData.isFromWorker) {
-            transaction.syncedAt = new Date();
-          }
+          
           promises.push(transaction.save({ session }));
 
           await this.updateUserAfterTransactionSucceed(
@@ -1359,9 +1342,7 @@ export class CommonService implements OnModuleInit {
                 {
                   type: UserRole.ADMIN,
                   address: transaction.toAddress,
-                  adminName: transaction.dataAdminTemp?.adminName,
-                  permissions: transaction.dataAdminTemp?.permissions,
-                  isHavingAction: transaction.dataAdminTemp?.isHavingAction,
+                 
                   status: UserStatus.ACTIVE,
                 },
               ],
@@ -1373,50 +1354,9 @@ export class CommonService implements OnModuleInit {
           );
         }
         break;
-      case TransactionType.ADMIN_UPDATE:
-        promises.push(
-          this.userModel.findOneAndUpdate(
-            {
-              type: UserRole.ADMIN,
-              address: transaction.toAddress,
-              isDeleted: false,
-            },
-            {
-              adminName: transaction.dataAdminTemp?.adminName,
-              permissions: transaction.dataAdminTemp?.permissions,
-            },
-            {
-              session,
-              new: true,
-            },
-          ),
-        );
-        break;
+      
       case TransactionType.ADMIN_ACTIVE:
-      case TransactionType.ADMIN_DEACTIVE:
-        const statusMapper = {
-          [TransactionType.ADMIN_ACTIVE]: UserStatus.ACTIVE,
-          [TransactionType.ADMIN_DEACTIVE]: UserStatus.DEACTIVE,
-        };
-        promises.push(
-          this.userModel.findOneAndUpdate(
-            {
-              type: UserRole.ADMIN,
-              address: transaction.toAddress,
-              isDeleted: false,
-            },
-            {
-              adminName: transaction.dataAdminTemp?.adminName,
-              status: statusMapper[transaction.type],
-              permissions: transaction.dataAdminTemp?.permissions,
-            },
-            {
-              session,
-              new: true,
-            },
-          ),
-        );
-        break;
+
       case TransactionType.ADMIN_DELETE:
         promises.push(
           this.userModel.findOneAndDelete(
@@ -1547,7 +1487,7 @@ export class CommonService implements OnModuleInit {
     return;
   }
 
-  async createAdmin(data: AdminTemp, session: any) {
+  async createAdmin(data, session: any) {
     return this.userModel.create([data], { session });
   }
 

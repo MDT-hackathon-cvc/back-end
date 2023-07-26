@@ -14,18 +14,13 @@ import { UserJWT } from 'src/auth/role.enum';
 import mongoose from 'mongoose';
 import { Utils } from 'src/common/utils';
 import {
-  Contract,
-  DEFAULT_CURRENCY_NAME,
   ErrorCode,
   FIX_FLOATING_POINT,
 } from 'src/common/constants';
-import BigNumber from 'bignumber.js';
 import { ApiError } from 'src/common/api';
 import { CommonService } from 'src/common-service/common.service';
 import {
-  AdminPermissions,
   UserRole,
-  UserStatus,
 } from 'src/schemas/User.schema';
 import { UpdateTransactionHashDto } from './dto/user/update-transaction-hash.dto';
 
@@ -70,23 +65,27 @@ export class TransactionsService {
   
   }
 
-  async validateCreateTransaction(
-    requestData: CreateTransactionDto,
-    user: UserJWT,
-  ) {
-    switch (requestData.type) {
-      case TransactionType.MINTED:
-        return this.validateCreateTransactionBuyNFT(requestData, user);
-      case TransactionType.TRANSFER:
-        return this.validateCreateTransactionBuyNFT(requestData, user);
-      default:
-        break;
-    }
-  }
 
-  async create(requestData: CreateTransactionDto, user?: UserJWT) {
-    // Validate
-    await this.validateCreateTransaction(requestData, user);
+
+  async create(requestData: CreateTransactionDto, address?: string) {
+    const { nftId, quantity, fromAddress, transactionHash } = requestData;
+    const nft = await this.commonService.findNFTById(nftId);
+    const transaction = {
+      nft: {
+        id: nft._id,
+        name: nft.name,
+        code: nft.code,
+        slug: nft.slug,
+        image: nft.ipfsImage,
+      },
+      type: TransactionType.BUY,
+      fromAddress,
+      toAddress: address,
+      status: TransactionStatus.SUCCESS,
+      hash: transactionHash,
+      quantity
+    };
+    return (await this.transactionModel.create(transaction)).save();
   }
 
 
@@ -267,30 +266,7 @@ export class TransactionsService {
     const session = await this.connection.startSession();
     await session.withTransaction(async () => {
       await transaction.save({ session });
-      switch (transaction.type) {
-        case TransactionType.ADMIN_SETTING:
-          const admin = transaction.dataAdminTemp;
-          await this.commonService.createAdmin(admin, session);
-          break;
-        case TransactionType.ADMIN_DELETE:
-          const address = transaction.dataAdminTemp?.address;
-          const adminDelete = await this.commonService.findUserByAddress(
-            address,
-          );
-          adminDelete.isDeleted = true;
-          await adminDelete.save({ session });
-          break;
-        case TransactionType.ADMIN_ACTIVE:
-        case TransactionType.ADMIN_DEACTIVE:
-          const { adminName } = transaction.dataAdminTemp;
-          const adminUpdateStatus = await this.commonService.findUserByAddress(
-            transaction.dataAdminTemp?.address,
-          );
-          if (adminName) adminUpdateStatus.adminName = adminName;
-          adminUpdateStatus.status = UserStatus.PROCESSING;
-          await adminUpdateStatus.save({ session });
-          break;
-      }
+     
     });
 
   }
@@ -406,7 +382,6 @@ export class TransactionsService {
     const promises = [];
     const session = await this.connection.startSession();
     await session.withTransaction(async () => {
-      transaction.message = message?.error?.message;
       transaction.status = requestData.status;
       promises.push(transaction.save({ session }));
       this.commonService.updateAdminAfterTransactionFail(

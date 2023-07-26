@@ -393,18 +393,24 @@ export class NftsService {
   async putOnSale({ price, hashPutOnSale }, address, id) {
     // Call to contract get orderId base on hash
     const provider = this.commonService.getProvider(process.env.CHAIN_ID);
-    const dataPutOneSale = await provider.getTransactionReceipt(hashPutOnSale);
-    const orderId = dataPutOneSale.logs[1].data;
-    return this.nftModel.updateOne(
-      { _id: id, creatorAddress: address },
-      {
-        $set: {
-          price: price,
-          hashPutOnSale: hashPutOnSale,
-          status: NFTStatus.ON_SALE,
-          orderId: orderId,
+    while(true) {
+      const dataPutOneSale = await provider.getTransactionReceipt(hashPutOnSale);
+      const orderId = dataPutOneSale.logs[1].data;
+      return this.nftModel.updateOne(
+        { _id: id, creatorAddress: address },
+        {
+          $set: {
+            price: price,
+            hashPutOnSale: hashPutOnSale,
+            status: NFTStatus.ON_SALE,
+            orderId: orderId,
+          },
         },
-      },
-    );
+        {
+          new: true
+        }
+      );
+    }
+    
   }
 }

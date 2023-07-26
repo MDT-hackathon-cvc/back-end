@@ -153,13 +153,7 @@ export class SimpleNFT {
   slug: string;
 
   @Prop()
-  token: SimpleToken;
-
-  @Prop()
   image: NFTImage;
-
-  @Prop()
-  description: string;
 }
 
 @Schema({

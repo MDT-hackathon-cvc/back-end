@@ -29,6 +29,7 @@ export enum TransactionType {
   ADMIN_DELETE = 'admin-delete',
   CLAIMED = 'claimed',
   RECOVER = 'recover',
+  BUY = 'buy'
 }
 
 export enum TransactionStatus {
@@ -39,62 +40,6 @@ export enum TransactionStatus {
   FAILED = 'failed',
 }
 
-export class TransactionSignature {
-  @Prop([{ type: Object }])
-  data: any[];
-
-  @Prop([{ type: Object }])
-  dataRequest?: any[];
-
-  @Prop()
-  address: string;
-
-  @Prop()
-  hash: string;
-}
-@Schema()
-export class SimpleCommission {
-  @Prop({ default: Contract.ZERO_ADDRESS })
-  address: string;
-
-  @Prop({ type: Object, default: 0 })
-  commissionFee: mongoose.Types.Decimal128;
-
-  @Prop({ default: 0 })
-  percentage: number;
-
-  @Prop({ default: '' })
-  role: string;
-}
-
-@Schema()
-export class AffiliateInfor {
-  @Prop({ type: SimpleCommission, default: {}, _id: false })
-  bda: SimpleCommission;
-
-  @Prop({ type: SimpleCommission, default: {}, _id: false })
-  referrerDirect: SimpleCommission;
-}
-
-export class AdminTemp {
-  @Prop({ type: String, default: '' })
-  adminName: string;
-
-  @Prop({ type: String, default: '' })
-  address: string;
-
-  @Prop({ type: Array, default: [] })
-  permissions: string[];
-
-  @Prop({ type: String, default: UserStatus.DRAFT })
-  status: string;
-
-  @Prop({ type: String, default: UserRole.ADMIN })
-  role: string;
-
-  @Prop({ type: Boolean, default: false })
-  isHavingAction: boolean;
-}
 
 @Schema({
   timestamps: true,
@@ -113,59 +58,13 @@ export class Transaction {
   toAddress: string;
 
   @Prop()
-  tokenIds: string[];
-
-  @Prop()
   quantity: number;
-
-  @Prop({ type: Object })
-  depositAmount: mongoose.Types.Decimal128;
-
-  @Prop({ type: Object })
-  revenue: mongoose.Types.Decimal128;
-
-  @Prop({ type: Object })
-  revenueUsd: mongoose.Types.Decimal128;
 
   @Prop()
   status: TransactionStatus;
 
   @Prop()
   hash: string;
-
-  @Prop()
-  syncedAt: Date;
-
-  @Prop()
-  message: string;
-
-  @Prop({ type: TransactionSignature })
-  signature: TransactionSignature;
-
-  @Prop({ type: AffiliateInfor, default: {}, _id: false })
-  affiliateInfor?: AffiliateInfor;
-
-
-
-  @Prop({ type: Object })
-  adminEarning: mongoose.Types.Decimal128;
-
-  @Prop({ type: String, default: null })
-  adminMintedAddress: string;
-
-
-
-  @Prop({ type: Object })
-  totalDistributedReward: mongoose.Types.Decimal128;
-
-  @Prop()
-  rewardEventIds: string[];
-
-  @Prop({ type: AdminTemp, default: {}, _id: false })
-  dataAdminTemp: AdminTemp;
-
-  @Prop()
-  faultyToken: string;
 }
 
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);
