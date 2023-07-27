@@ -19,6 +19,11 @@ export class CreateTransactionDto {
   quantity?: number;
 
   @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  price?: number;
+
+  @ApiProperty()
   @IsString()
   @IsOptional()
   @Transform(({ value }) => Utils.formatAddress(value))

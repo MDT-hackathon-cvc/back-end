@@ -12,20 +12,20 @@ export enum TokenStandard {
 }
 
 export enum NFTStatus {
-  OFF_SALE = 'off-sale',
-  ON_SALE = 'on-sale',
-  SOLD_OUT = 'sold-out',
+  OFF_SALE = 'OFF-SALE',
+  ON_SALE = 'ON-SALE',
+  SOLD_OUT = 'SOLD-OUT',
   MINTED = 'MINTED'
 }
 
 export enum OwnerStatus {
-  LOCKED = 'locked',
-  UNLOCKED = 'unlocked',
-  BURNED = 'burned',
-  REDEEMED = 'redeemed',
-  INVALID = 'invalid',
-  UNMINT = 'unmint',
-  MINTED = 'minted'
+  LOCKED = 'LOCKED',
+  UNLOCKED = 'UNLOKCED',
+  BURNED = 'BURNED',
+  REDEEMED = 'REDEEMED',
+  INVALID = 'INVALID',
+  UNMINT = 'UNMINT',
+  MINTED = 'MINTED'
 }
 export class NFTMedia {
   @Prop()

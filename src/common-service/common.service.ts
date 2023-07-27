@@ -1355,7 +1355,6 @@ export class CommonService implements OnModuleInit {
         }
         break;
       
-      case TransactionType.ADMIN_ACTIVE:
 
       case TransactionType.ADMIN_DELETE:
         promises.push(
@@ -1431,30 +1430,7 @@ export class CommonService implements OnModuleInit {
             },
           ),
         );
-      case TransactionType.ADMIN_ACTIVE:
-      case TransactionType.ADMIN_DEACTIVE:
-        const mapper = {
-          [TransactionType.ADMIN_ACTIVE]: UserStatus.DEACTIVE,
-          [TransactionType.ADMIN_DEACTIVE]: UserStatus.ACTIVE,
-        };
-        return promises.push(
-          this.userModel.findOneAndUpdate(
-            {
-              type: UserRole.ADMIN,
-              address: transaction.toAddress,
-              isDeleted: false,
-              status: UserStatus.PROCESSING,
-            },
-            {
-              status: mapper[transaction.type],
-            },
-            {
-              session,
-              new: true,
-            },
-          ),
-        );
-      case TransactionType.ADMIN_DELETE:
+      
         return this.userModel.findOneAndUpdate(
           {
             type: UserRole.ADMIN,

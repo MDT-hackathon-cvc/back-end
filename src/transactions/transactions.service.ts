@@ -68,7 +68,7 @@ export class TransactionsService {
 
 
   async create(requestData: CreateTransactionDto, address?: string) {
-    const { nftId, quantity, fromAddress, transactionHash } = requestData;
+    const { nftId, quantity, fromAddress, transactionHash, price } = requestData;
     const nft = await this.commonService.findNFTById(nftId);
     const transaction = {
       nft: {
@@ -83,7 +83,8 @@ export class TransactionsService {
       toAddress: address,
       status: TransactionStatus.SUCCESS,
       hash: transactionHash,
-      quantity
+      quantity,
+      price
     };
     return (await this.transactionModel.create(transaction)).save();
   }
@@ -124,7 +125,7 @@ export class TransactionsService {
         status: TransactionStatus.SUCCESS,
       },
       {
-        type: TransactionType.MINTED,
+        type: TransactionType.BUY,
       },
       {
         toAddress: {
@@ -133,15 +134,6 @@ export class TransactionsService {
         },
       },
     );
-
-    if (keyword) {
-      conditionAnd.push({
-        'event.name': {
-          $regex: requestData.keyword,
-          $options: 'i',
-        },
-      });
-    }
 
     if (startDate) {
       conditionAnd.push({
@@ -180,24 +172,18 @@ export class TransactionsService {
         $project: {
           _id: 1,
           createdAt: 1,
-          eventId: '$event.id',
-          eventName: '$event.name',
-          eventImg: '$event.imgUrl',
           item: {
             id: '$nft.id',
             name: '$nft.name',
             image: '$nft.image',
-            totalSupply: '$nft.token.totalSupply',
-            description: '$nft.description',
+            code: '$nft.code',
           },
           quantity: 1,
-          subTotal: '$revenue',
           hash: 1,
-          reffrer: '$affiliateInfor.referrerDirect.address',
           status: 1,
           type: 1,
           toAddress: 1,
-          unitPrice: '$event.category.unitPrice',
+          price: 1
         },
       },
       {

@@ -23,21 +23,18 @@ export enum TransactionType {
   APPROVE_REDEMPTION = 'approve-redemption',
   DEPOSIT = 'deposit',
   ADMIN_SETTING = 'admin-setting',
-  ADMIN_UPDATE = 'admim-update',
-  ADMIN_ACTIVE = 'admin-active',
-  ADMIN_DEACTIVE = 'admin-deactive',
   ADMIN_DELETE = 'admin-delete',
   CLAIMED = 'claimed',
   RECOVER = 'recover',
-  BUY = 'buy'
+  BUY = 'BUY'
 }
 
 export enum TransactionStatus {
-  DRAFT = 'draft',
-  PROCESSING = 'processing',
-  SUCCESS = 'success',
-  CANCEL = 'cancel',
-  FAILED = 'failed',
+  DRAFT = 'DRAFT',
+  PROCESSING = 'PROCESSING',
+  SUCCESS = 'SUCCESS',
+  CANCEL = 'CANCEL',
+  FAILED = 'FAIL',
 }
 
 
@@ -65,6 +62,9 @@ export class Transaction {
 
   @Prop()
   hash: string;
+
+  @Prop()
+  price: string;
 }
 
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);
