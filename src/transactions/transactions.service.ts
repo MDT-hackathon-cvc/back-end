@@ -85,7 +85,7 @@ export class TransactionsService {
           orderId,
         };
         if (status === TransactionStatus.SUCCESS) {
-          nft.status = NFTStatus.SOLD_OUT;
+          nft.status = NFTStatus.OFF_SALE;
           nft.orderId = '';
           await nft.save();
         }
