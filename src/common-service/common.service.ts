@@ -1530,6 +1530,22 @@ export class CommonService implements OnModuleInit {
     )
   };
 
+  async updateOwnerAfterBuy(data) {
+    console.log('data :>> ', data);
+    const { nft, address } = data
+      const owner = {
+        address,
+        tokenId: nft._id,
+        mintedDate: new Date(),
+        status: OwnerStatus.MINTED,
+        nftId: nft._id,
+        nft: this.convertToSimpleNFT(nft),
+        isTransfer: false,
+      }
+    return this.ownerModel.insertMany(owner) 
+  }
+
+
   async findOwned(user: UserJWT, id: string, requestData) {
     const match: any = {
       $and: [

@@ -215,6 +215,7 @@ export class NftsService {
           description: 1,
           ipfsImage: 1,
           ipfsMetadata: 1,
+          price: 1
         },
       },
     );
