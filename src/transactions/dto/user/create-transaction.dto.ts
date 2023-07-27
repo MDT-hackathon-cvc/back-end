@@ -32,5 +32,10 @@ export class CreateTransactionDto {
   @ApiProperty()
   @IsString()
   @IsOptional()
-  transactionHash: string
+  transactionHash: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  status: string
 }

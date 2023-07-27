@@ -3,12 +3,10 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/schemas/User.schema';
-import { UsersAdminController } from './users.admin.controller';
 import { CommonModule } from 'src/common-service/common.module';
 import { NFT, NFTSchema } from 'src/schemas/NFT.schema';
 import { Transaction, TransactionSchema } from 'src/schemas/Transaction.schema';
 import { Owner, OwnerSchema } from 'src/schemas/Owner.schema';
-import { AdminAccessController } from './admin-access.admin.controller';
 
 @Module({
   imports: [
@@ -20,7 +18,7 @@ import { AdminAccessController } from './admin-access.admin.controller';
     ]),
     CommonModule,
   ],
-  controllers: [UsersController, UsersAdminController, AdminAccessController],
+  controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],
 })

@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CreateTransactionDto } from './dto/user/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/user/update-transaction.dto';
 import { Model } from 'mongoose';
@@ -13,19 +13,13 @@ import { FindPurchaseHistoryDto } from './dto/user/find-purchase-history.dto';
 import { UserJWT } from 'src/auth/role.enum';
 import mongoose from 'mongoose';
 import { Utils } from 'src/common/utils';
-import {
-  ErrorCode,
-  FIX_FLOATING_POINT,
-} from 'src/common/constants';
+import { ErrorCode, FIX_FLOATING_POINT } from 'src/common/constants';
 import { ApiError } from 'src/common/api';
 import { CommonService } from 'src/common-service/common.service';
-import {
-  UserRole,
-} from 'src/schemas/User.schema';
+import { UserRole } from 'src/schemas/User.schema';
 import { UpdateTransactionHashDto } from './dto/user/update-transaction-hash.dto';
 
-
-import { Owner } from 'src/schemas/NFT.schema';
+import { NFTStatus, Owner } from 'src/schemas/NFT.schema';
 import { OwnerDocument, OwnerStatus } from 'src/schemas/Owner.schema';
 
 @Injectable()
@@ -60,54 +54,43 @@ export class TransactionsService {
   async validateCreateTransactionBuyNFT(
     requestData: CreateTransactionDto,
     user: UserJWT,
-  ) {
-  
-  
-  }
-
-
+  ) {}
 
   async create(requestData: CreateTransactionDto, address?: string) {
-    const { nftId, quantity, fromAddress, transactionHash, price } = requestData;
-    const nft = await this.commonService.findNFTById(nftId);
-    const transaction = {
-      nft: {
-        id: nft._id,
-        name: nft.name,
-        code: nft.code,
-        slug: nft.slug,
-        image: nft.ipfsImage,
-      },
-      type: TransactionType.BUY,
-      fromAddress,
-      toAddress: address,
-      status: TransactionStatus.SUCCESS,
-      hash: transactionHash,
-      quantity,
-      price
-    };
-    return (await this.transactionModel.create(transaction)).save();
-  }
+    const { nftId, quantity, fromAddress, transactionHash, price, status } =
+      requestData;
+    const provider = this.commonService.getProvider(process.env.CHAIN_ID);
+    while (true) {
+      const dataPurchase = await provider.getTransactionReceipt(
+        transactionHash,
+      );
+      if (dataPurchase.logs[1]) {
+        const orderId = dataPurchase.logs[1].topics[1];
+        let nft = await this.commonService.findNFTById(nftId);
+        const transaction = {
+          nft: {
+            id: nft._id,
+            name: nft.name,
+            code: nft.code,
+            slug: nft.slug,
+            image: nft.ipfsImage,
+          },
+          type: TransactionType.BUY,
+          fromAddress,
+          toAddress: address,
+          status: TransactionStatus.SUCCESS,
+          hash: status === TransactionStatus.SUCCESS ? transactionHash : '',
+          quantity,
+          price,
+          orderId,
+        };
+        if (status === TransactionStatus.SUCCESS) {
+          nft.status = NFTStatus.SOLD_OUT;
+          nft.orderId = '';
+          await nft.save();
+        }
 
-
-  getActionCodeByTransactionType(type: TransactionType) {
-    const {
-      CONTRACT_CANCEL_REDEMPTION_CODE,
-      CONTRACT_SUBMIT_REDEMPTION_CODE,
-      CONTRACT_APPROVE_REDEMPTION_CODE,
-      CONTRACT_CANCEL_EVENT_CODE,
-    } = process.env;
-    switch (type) {
-      case TransactionType.CREATE_REDEMPTION:
-        return CONTRACT_SUBMIT_REDEMPTION_CODE;
-      case TransactionType.CANCEL_REDEMPTION:
-        return CONTRACT_CANCEL_REDEMPTION_CODE;
-      case TransactionType.APPROVE_REDEMPTION:
-        return CONTRACT_APPROVE_REDEMPTION_CODE;
-      case TransactionType.CANCELED:
-        return CONTRACT_CANCEL_EVENT_CODE;
-      default: {
-        break;
+        return (await this.transactionModel.create(transaction)).save();
       }
     }
   }
@@ -183,7 +166,8 @@ export class TransactionsService {
           status: 1,
           type: 1,
           toAddress: 1,
-          price: 1
+          price: 1,
+          orderId: 1,
         },
       },
       {
@@ -252,9 +236,7 @@ export class TransactionsService {
     const session = await this.connection.startSession();
     await session.withTransaction(async () => {
       await transaction.save({ session });
-     
     });
-
   }
 
   async getTotalMinter() {
@@ -382,5 +364,4 @@ export class TransactionsService {
 
     return transaction;
   }
-
 }

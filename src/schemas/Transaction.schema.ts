@@ -65,6 +65,9 @@ export class Transaction {
 
   @Prop()
   price: string;
+
+  @Prop()
+  orderId: string;
 }
 
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);

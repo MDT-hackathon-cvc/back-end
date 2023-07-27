@@ -4,7 +4,6 @@ import { TransactionsService } from './transactions.service';
 import { TransactionsController } from './transactions.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Transaction, TransactionSchema } from 'src/schemas/Transaction.schema';
-import { TransactionsAdminController } from './transactions.admin.controller';
 import { TransactionsAdminService } from './transactions.admin.service';
 import { NFT, NFTSchema, Owner } from 'src/schemas/NFT.schema';
 import { NftsModule } from 'src/nfts/nfts.module';
@@ -22,7 +21,7 @@ import { OwnerSchema } from 'src/schemas/Owner.schema';
     NftsModule,
     CommonModule,
   ],
-  controllers: [TransactionsController, TransactionsAdminController],
+  controllers: [TransactionsController],
   providers: [TransactionsService, TransactionsAdminService],
   exports: [TransactionsService],
 })

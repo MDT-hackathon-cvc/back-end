@@ -43,7 +43,7 @@ async function bootstrap() {
       }),
     );
     const config = new DocumentBuilder()
-      .setTitle('Brillianz-API')
+      .setTitle('CVC-API')
       .setDescription('The marketplace API description')
       .setVersion('1.0')
       .addBearerAuth()
