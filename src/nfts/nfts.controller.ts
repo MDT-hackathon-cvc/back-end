@@ -114,4 +114,12 @@ export class NftsController {
   putOnSale(@Request() req, @Body() requestData: PutOnSaleDto, @Param('id') id: string) {
     return this.nftsService.putOnSale(requestData, req.user.address, id);
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiBearerAuth()
+  @Put('/cancel-sale-orders/:id')
+  cancelOnSale(@Request() req, @Body() requestData: PutOnSaleDto, @Param('id') id: string) {
+    return this.nftsService.cancelOnSale(requestData, req.user.address, id);
+  }
 }

@@ -396,7 +396,7 @@ export class NftsService {
     while(true) {
       const dataPutOneSale = await provider.getTransactionReceipt(hashPutOnSale);
       if(dataPutOneSale?.logs[1]) {
-        const orderId = dataPutOneSale.logs[1].data;
+        const orderId = dataPutOneSale.logs[1].topics[1];
         return this.nftModel.updateOne(
           { _id: Utils.toObjectId(id) },
           {
@@ -415,5 +415,28 @@ export class NftsService {
       
     }
     
+  }
+
+  async cancelOnSale({ hashPutOnSale }, address, id) {
+    const provider = this.commonService.getProvider(process.env.CHAIN_ID);
+    while(true) {
+      const dataPutOneSale = await provider.getTransactionReceipt(hashPutOnSale);
+      if(dataPutOneSale?.logs[1]) {
+        return this.nftModel.updateOne(
+          { _id: Utils.toObjectId(id) },
+          {
+            $set: {
+              hashPutOnSale: hashPutOnSale,
+              status: NFTStatus.OFF_SALE,
+              orderId: '',
+            },
+          },
+          {
+            new: true
+          }
+        );
+      }
+      
+    }
   }
 }
