@@ -84,14 +84,14 @@ export class TransactionsService {
           price,
           orderId,
         };
-        if (status === TransactionStatus.SUCCESS) {
-          nft.status = NFTStatus.OFF_SALE;
-          nft.orderId = '';
-          await Promise.all([
-            nft.save(),
-            this.commonService.updateOwnerAfterBuy({ nft, address })
-          ])
-        }
+        
+        nft.status = NFTStatus.OFF_SALE;
+        nft.orderId = '';
+        await Promise.all([
+          nft.save(),
+          this.commonService.updateOwnerAfterBuy({ nft, address })
+        ])
+        
 
         return (await this.transactionModel.create(transaction)).save();
       }

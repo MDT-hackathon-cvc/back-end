@@ -1,4 +1,3 @@
-
 import { OwnerStatus } from './../schemas/NFT.schema';
 import {
   CACHE_MANAGER,
@@ -15,7 +14,6 @@ import {
   CacheKeyName,
   CONFIG_TO_BECOME_BDA,
   Contract,
-
   ErrorCode,
   MIMEType,
   ROLE_NOTI,
@@ -89,7 +87,6 @@ import { PushNotificationDto } from 'src/notifications/dto/push-notification.dto
 import { UserJWT } from 'src/auth/role.enum';
 import { ethers } from 'ethers';
 
-
 export enum ActionType {
   REDEMPTION = 1,
   TRANSFER_NFT = 2,
@@ -129,12 +126,9 @@ export class CommonService implements OnModuleInit {
 
     @InjectModel(Owner.name)
     private ownerModel: Model<OwnerDocument>,
-
   ) {}
 
-  async onModuleInit() {
-
-  }
+  async onModuleInit() {}
 
   async clearCacheNFT(transaction: TransactionDocument) {
     this.logger.log(`clearCacheNFT(): Clear cache NFT ${transaction.nft.id}`);
@@ -317,7 +311,6 @@ export class CommonService implements OnModuleInit {
     }
     return currency;
   }
-
 
   async findSigner() {
     const config = await this.findFullConfig();
@@ -530,7 +523,6 @@ export class CommonService implements OnModuleInit {
     );
   }
 
-
   deposit(transaction: TransactionDocument, requestData: UpdateTransactionDto) {
     return this.withLock(
       {
@@ -552,7 +544,7 @@ export class CommonService implements OnModuleInit {
           // Update Transaction: status
           transaction.status = TransactionStatus.SUCCESS;
           transaction.hash = requestData.hash;
-          
+
           promises.push(transaction.save({ session }));
           const results = await Promise.all(promises);
           this.logPromise(promises, results);
@@ -579,7 +571,7 @@ export class CommonService implements OnModuleInit {
       this.logger.log(
         `checkTransactionAlreadyCompleted(): ${transaction.id} is already completed`,
       );
-      
+
       return {
         isAlreadyCompleted: true,
       };
@@ -623,7 +615,6 @@ export class CommonService implements OnModuleInit {
    * @param transaction: transaction model
    * @returns equity shares of BDA
    */
-
 
   /**
    * Caculating volume of user level 1 (excluding all children of this user and one)
@@ -726,15 +717,14 @@ export class CommonService implements OnModuleInit {
           // Update Transaction: status
           transaction.status = TransactionStatus.SUCCESS;
           transaction.hash = requestData.hash;
-          
+
           promises.push(transaction.save({ session }));
 
           const nft = await this.nftModel.findById(transaction.nft.id);
 
           // Update NFT: status, token id, total supply, total minted
-       
-          // update user info when admin mints Black NFT to one
 
+          // update user info when admin mints Black NFT to one
         });
         await session.endSession();
         // push noti
@@ -762,7 +752,6 @@ export class CommonService implements OnModuleInit {
         // Transaction
         promises.push(transaction.save({ session }));
         // Update NFT: status, token id, total supply, total minted
-       
       } catch (error) {
         await Promise.all(promises);
         throw error;
@@ -819,7 +808,6 @@ export class CommonService implements OnModuleInit {
       },
     );
   }
-
 
   async getReceiverAddressesByType(type: NotificationType) {
     switch (type) {
@@ -902,7 +890,6 @@ export class CommonService implements OnModuleInit {
     return simpleNFT;
   }
 
-
   async generateCaculateUsdStages(data: {
     currencyField: string;
     unitPriceField: string;
@@ -946,7 +933,6 @@ export class CommonService implements OnModuleInit {
     ];
   }
 
-
   validateWhiteListWhenPurchase(
     whiteListAddress: string[],
     userAddress: string,
@@ -961,7 +947,6 @@ export class CommonService implements OnModuleInit {
       );
     }
   }
-
 
   async getChildrenOrDirectRefereeFromAddress(
     address: string,
@@ -1070,7 +1055,6 @@ export class CommonService implements OnModuleInit {
       throw new Error(response.statusText);
     }
   }
-  
 
   sortArrayOfObject(values: any[], requestSort: any) {
     const { sort } = requestSort;
@@ -1089,8 +1073,6 @@ export class CommonService implements OnModuleInit {
     }
     return user;
   }
-
-
 
   async canLoseBDAPermission(
     user: UserDocument,
@@ -1140,7 +1122,6 @@ export class CommonService implements OnModuleInit {
       }
     } else {
       switch (actionType) {
-        
         case ActionType.TRANSFER_BLACK_NFT:
         case ActionType.TRANSFER_NFT:
           if (user.userType === UserType.BDA && quantityOftoken === 1) {
@@ -1224,7 +1205,6 @@ export class CommonService implements OnModuleInit {
     ]);
   }
 
-
   async updateReceiverNFT(data: {
     transaction: TransactionDocument;
     nft: NFTDocument;
@@ -1289,7 +1269,7 @@ export class CommonService implements OnModuleInit {
           // Update Transaction: status
           transaction.status = TransactionStatus.SUCCESS;
           transaction.hash = requestData.hash;
-          
+
           promises.push(transaction.save({ session }));
 
           await this.updateUserAfterTransactionSucceed(
@@ -1342,7 +1322,7 @@ export class CommonService implements OnModuleInit {
                 {
                   type: UserRole.ADMIN,
                   address: transaction.toAddress,
-                 
+
                   status: UserStatus.ACTIVE,
                 },
               ],
@@ -1354,7 +1334,6 @@ export class CommonService implements OnModuleInit {
           );
         }
         break;
-      
 
       case TransactionType.ADMIN_DELETE:
         promises.push(
@@ -1430,7 +1409,7 @@ export class CommonService implements OnModuleInit {
             },
           ),
         );
-      
+
         return this.userModel.findOneAndUpdate(
           {
             type: UserRole.ADMIN,
@@ -1476,7 +1455,6 @@ export class CommonService implements OnModuleInit {
             address,
           },
         },
-
       ]);
       return result?.length > 0 ? result[0].totalLocking : 0;
     } catch (error) {
@@ -1495,27 +1473,27 @@ export class CommonService implements OnModuleInit {
     ]);
     return result?.length === tokenIds?.length;
   }
-  
-  async updateOwnerAfterCreateNft(data) { 
+
+  async updateOwnerAfterCreateNft(data) {
     console.log('data :>> ', data);
-    const { nft, address } = data
-      const owner = {
-        address,
-        tokenId: nft._id,
-        mintedDate: new Date(),
-        status: OwnerStatus.UNMINT,
-        nftId: nft._id,
-        nft: this.convertToSimpleNFT(nft),
-        isTransfer: false,
-      }
-    return this.ownerModel.insertMany(owner)
+    const { nft, address } = data;
+    const owner = {
+      address,
+      tokenId: nft._id,
+      mintedDate: new Date(),
+      status: OwnerStatus.UNMINT,
+      nftId: nft._id,
+      nft: this.convertToSimpleNFT(nft),
+      isTransfer: false,
+    };
+    return this.ownerModel.insertMany(owner);
   }
 
   async updateOwnerAfterMint(data) {
     const { nftId, address, totalSupply, hash } = data;
     return this.ownerModel.updateOne(
       {
-        nftId: nftId
+        nftId: nftId,
       },
       {
         $set: {
@@ -1524,34 +1502,33 @@ export class CommonService implements OnModuleInit {
           mintedDate: new Date(),
           status: OwnerStatus.MINTED,
           amount: totalSupply,
-          tokenId: nftId
-        }
-      }
-    )
-  };
-
-  async updateOwnerAfterBuy(data) {
-    console.log('data :>> ', data);
-    const { nft, address } = data
-      const owner = {
-        address,
-        tokenId: nft._id,
-        mintedDate: new Date(),
-        status: OwnerStatus.MINTED,
-        nftId: nft._id,
-        nft: this.convertToSimpleNFT(nft),
-        isTransfer: false,
-      }
-    return this.ownerModel.insertMany(owner) 
+          tokenId: nftId,
+        },
+      },
+    );
   }
 
+  async updateOwnerAfterBuy(data) {
+    const { nft, address } = data;
+    return this.ownerModel.updateOne(
+      {
+        tokenId: nft._id,
+      },
+      {
+        $set: {
+          address: address,
+          status: OwnerStatus.MINTED,
+        },
+      },
+    );
+  }
 
   async findOwned(user: UserJWT, id: string, requestData) {
     const match: any = {
       $and: [
         { isDeleted: false },
         {
-          'owners.address': user.address
+          'owners.address': user.address,
         },
       ],
     };
@@ -1609,10 +1586,7 @@ export class CommonService implements OnModuleInit {
 
   getProvider(networkId: string) {
     if (networkId === process.env.CHAIN_ID) {
-      return ethers.getDefaultProvider(
-        process.env.CHAIN_RPC_URL
-      );
+      return ethers.getDefaultProvider(process.env.CHAIN_RPC_URL);
     }
-      
   }
 }
