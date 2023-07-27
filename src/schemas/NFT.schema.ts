@@ -15,7 +15,8 @@ export enum NFTStatus {
   OFF_SALE = 'OFF-SALE',
   ON_SALE = 'ON-SALE',
   SOLD_OUT = 'SOLD-OUT',
-  MINTED = 'MINTED'
+  MINTED = 'MINTED',
+  UNMINT = 'UNMINT'
 }
 
 export enum OwnerStatus {

@@ -326,7 +326,7 @@ export class NftsService {
     console.log('============');
     createdNft = new this.nftModel(requestData);
     createdNft.slug = nftSlug;
-    createdNft.status = NFTStatus.OFF_SALE;
+    createdNft.status = NFTStatus.UNMINT;
     createdNft.ipfsImage = ipfsUrl;
     createdNft.name = name;
     createdNft.description = description;
