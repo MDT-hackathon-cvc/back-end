@@ -11,6 +11,7 @@ import { Model } from 'mongoose';
 import { ApiError } from 'src/common/api';
 import { ErrorCode, TYPE_LOGIN } from 'src/common/constants';
 import { CommonService } from 'src/common-service/common.service';
+import { ethers } from 'ethers';
 
 @Injectable()
 export class AuthService {
@@ -29,11 +30,18 @@ export class AuthService {
    * @return {any} user information
    */
   async login(requestData: LoginDto) {
-    let address = '';
+    let { address, signature } = requestData
     let result: any;
     // Verify signature
     try {
       // Verify signature
+      
+        const message = ethers.utils.solidityKeccak256(["address"], [address]);
+        const result = ethers.utils.verifyMessage(
+          ethers.utils.arrayify(message),
+          signature
+        );
+      
     } catch (error) {
       throw new UnauthorizedException(error.message);
     }
